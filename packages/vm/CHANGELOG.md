@@ -113,6 +113,8 @@ callbacks for accessing their APIs.
   PR [#783](https://github.com/ethereumjs/ethereumjs-vm/pull/783)
 - Make `memory.ts` use Buffers instead of Arrays,
   PR [#850](https://github.com/ethereumjs/ethereumjs-vm/pull/850)
+- The `afterBlock` event has been changed from emitting an Object of shape { receipts, results } to RunBlockResult,
+  PR [#853](https://github.com/ethereumjs/ethereumjs-vm/pull/853)
 
 **Bug Fixes**
 
