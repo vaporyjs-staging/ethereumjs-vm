@@ -1,33 +1,28 @@
-import { BN } from 'ethereumjs-util'
-import { Block, BlockOptions } from '@ethereumjs/block'
-import Account from '@ethereumjs/account'
+import { Account, BN } from 'ethereumjs-util'
 import Blockchain from '@ethereumjs/blockchain'
 import VM from '../../lib/index'
 import { VMOpts } from '../../lib'
+import { Block } from '@ethereumjs/block'
 
 const level = require('level-mem')
 
-export function createGenesis(opts: BlockOptions) {
-  const genesis = new Block(undefined, { ...opts, initWithGenesisHeader: true })
-  return genesis
-}
-
 export function createAccount(nonce: BN = new BN(0), balance: BN = new BN(0xfff384)) {
-  const raw = { nonce, balance }
-  const acc = new Account(raw)
-  return acc
+  return new Account(nonce, balance)
 }
 
-export function setupVM(opts: VMOpts = {}) {
+export function setupVM(opts: VMOpts & { genesisBlock?: Block } = {}) {
   const db = level()
-
+  const { common, genesisBlock } = opts
   if (!opts.blockchain) {
-    opts.blockchain = new Blockchain({ db, validateBlocks: false, validatePow: false })
+    opts.blockchain = new Blockchain({
+      db,
+      validateBlocks: false,
+      validateConsensus: false,
+      common,
+      genesisBlock,
+    })
   }
-
-  const vm = new VM(opts)
-  ;(<any>vm.blockchain)._common = vm._common
-  vm.blockchain.dbManager._common = vm._common
-
-  return vm
+  return new VM({
+    ...opts,
+  })
 }

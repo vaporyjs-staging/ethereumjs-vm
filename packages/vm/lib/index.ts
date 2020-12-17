@@ -1,6 +1,5 @@
-import BN = require('bn.js')
-import { SecureTrie as Trie } from 'merkle-patricia-tree'
-import Account from '@ethereumjs/account'
+import { SecureTrie as Trie } from '@ethereumjs/trie'
+import { Account, Address } from 'ethereumjs-util'
 import Blockchain from '@ethereumjs/blockchain'
 import Common from '@ethereumjs/common'
 import { StateManager, DefaultStateManager } from './state/index'
@@ -15,6 +14,7 @@ import runBlockchain from './runBlockchain'
 const AsyncEventEmitter = require('async-eventemitter')
 const promisify = require('util.promisify')
 
+// eslint-disable-next-line no-undef
 const IS_BROWSER = typeof (<any>globalThis).window === 'object' // very ugly way to detect if we are running in a browser
 let mcl: any
 let mclInitPromise: any
@@ -41,6 +41,7 @@ export interface VMOpts {
    * ### Supported EIPs
    *
    * - [EIP-2537](https://eips.ethereum.org/EIPS/eip-2537) (`experimental`) - BLS12-381 precompiles
+   * - [EIP-2929](https://eips.ethereum.org/EIPS/eip-2929) (`experimental`) - Gas cost increases for state access opcodes
    *
    * *Annotations:*
    *
@@ -51,7 +52,7 @@ export interface VMOpts {
    * Default setup if no `Common` instance is provided:
    *
    * - `chain`: `mainnet`
-   * - `hardfork`: `petersburg`
+   * - `hardfork`: `istanbul`
    * - `eips`: `[]`
    */
   common?: Common
@@ -60,7 +61,7 @@ export interface VMOpts {
    */
   stateManager?: StateManager
   /**
-   * A [merkle-patricia-tree](https://github.com/ethereumjs/merkle-patricia-tree) instance for the state tree (ignored if stateManager is passed)
+   * An [@ethereumjs/trie](https://github.com/ethereumjs/ethereumjs-vm/tree/master/packages/trie) instance for the state tree (ignored if stateManager is passed)
    * @deprecated
    */
   state?: any // TODO
@@ -88,6 +89,13 @@ export interface VMOpts {
    * Default: `false` [ONLY set to `true` during debugging]
    */
   allowUnlimitedContractSize?: boolean
+
+  /**
+   * Select hardfork based upon block number. This automatically switches to the right hard fork based upon the block number.
+   *
+   * Default: `false`
+   */
+  selectHardforkByBlockNumber?: boolean
 }
 
 /**
@@ -97,15 +105,35 @@ export interface VMOpts {
  * This class is an AsyncEventEmitter, please consult the README to learn how to use it.
  */
 export default class VM extends AsyncEventEmitter {
-  opts: VMOpts
-  _common: Common
-  stateManager: StateManager
-  blockchain: Blockchain
-  allowUnlimitedContractSize: boolean
-  _opcodes: OpcodeList
+  /**
+   * The StateManager used by the VM
+   */
+  readonly stateManager: StateManager
+  /**
+   * The blockchain the VM operates on
+   */
+  readonly blockchain: Blockchain
+
+  readonly _common: Common
+
+  protected readonly _opts: VMOpts
+  protected _isInitialized: boolean = false
+  protected readonly _allowUnlimitedContractSize: boolean
+  protected _opcodes: OpcodeList
+  protected readonly _selectHardforkByBlockNumber: boolean
+
+  /**
+   * Cached emit() function, not for public usage
+   * set to public due to implementation internals
+   * @hidden
+   */
   public readonly _emit: (topic: string, data: any) => Promise<void>
-  protected isInitialized: boolean = false
-  public readonly _mcl: any // pointer to the mcl package
+  /**
+   * Pointer to the mcl package, not for public usage
+   * set to public due to implementation internals
+   * @hidden
+   */
+  public readonly _mcl: any //
 
   /**
    * VM async constructor. Creates engine instance and initializes it.
@@ -125,7 +153,7 @@ export default class VM extends AsyncEventEmitter {
   constructor(opts: VMOpts = {}) {
     super()
 
-    this.opts = opts
+    this._opts = opts
 
     // Throw on chain or hardfork options removed in latest major release
     // to prevent implicit chain setup on a wrong chain
@@ -135,7 +163,7 @@ export default class VM extends AsyncEventEmitter {
 
     if (opts.common) {
       //EIPs
-      const supportedEIPs = [2537]
+      const supportedEIPs = [2537, 2929]
       for (const eip of opts.common.eips()) {
         if (!supportedEIPs.includes(eip)) {
           throw new Error(`${eip} is not supported by the VM`)
@@ -173,13 +201,17 @@ export default class VM extends AsyncEventEmitter {
       this.stateManager = opts.stateManager
     } else {
       const trie = opts.state || new Trie()
-      this.stateManager = new DefaultStateManager({ trie, common: this._common })
+      this.stateManager = new DefaultStateManager({
+        trie,
+        common: this._common,
+      })
     }
 
     this.blockchain = opts.blockchain || new Blockchain({ common: this._common })
 
-    this.allowUnlimitedContractSize =
-      opts.allowUnlimitedContractSize === undefined ? false : opts.allowUnlimitedContractSize
+    this._allowUnlimitedContractSize = opts.allowUnlimitedContractSize || false
+
+    this._selectHardforkByBlockNumber = opts.selectHardforkByBlockNumber ?? false
 
     if (this._common.eips().includes(2537)) {
       if (IS_BROWSER) {
@@ -199,26 +231,22 @@ export default class VM extends AsyncEventEmitter {
   }
 
   async init(): Promise<void> {
-    if (this.isInitialized) {
+    if (this._isInitialized) {
       return
     }
 
-    const { opts } = this
+    await this.blockchain.initPromise
 
-    if (opts.activatePrecompiles && !opts.stateManager) {
-      this.stateManager.checkpoint()
+    if (this._opts.activatePrecompiles && !this._opts.stateManager) {
+      await this.stateManager.checkpoint()
       // put 1 wei in each of the precompiles in order to make the accounts non-empty and thus not have them deduct `callNewAccount` gas.
       await Promise.all(
         Object.keys(precompiles)
-          .map((k: string): Buffer => Buffer.from(k, 'hex'))
-          .map((address: Buffer) =>
-            this.stateManager.putAccount(
-              address,
-              new Account({
-                balance: '0x01',
-              }),
-            ),
-          ),
+          .map((k: string): Address => new Address(Buffer.from(k, 'hex')))
+          .map(async (address: Address) => {
+            const account = Account.fromAccountData({ balance: 1 })
+            await this.stateManager.putAccount(address, account)
+          })
       )
       await this.stateManager.commit()
     }
@@ -227,14 +255,14 @@ export default class VM extends AsyncEventEmitter {
       if (IS_BROWSER) {
         throw new Error('EIP-2537 is currently not supported in browsers')
       } else {
-        let mcl = this._mcl
+        const mcl = this._mcl
         await mclInitPromise // ensure that mcl is initialized.
         mcl.setMapToMode(mcl.IRTF) // set the right map mode; otherwise mapToG2 will return wrong values.
         mcl.verifyOrderG1(1) // subgroup checks for G1
         mcl.verifyOrderG2(1) // subgroup checks for G2
       }
     }
-    this.isInitialized = true
+    this._isInitialized = true
   }
 
   /**

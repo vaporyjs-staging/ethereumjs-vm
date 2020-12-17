@@ -12,32 +12,23 @@ This are the options that the Blockchain constructor can receive.
 
 ### Properties
 
-* [chain](_index_.blockchainoptions.md#optional-chain)
 * [common](_index_.blockchainoptions.md#optional-common)
 * [db](_index_.blockchainoptions.md#optional-db)
-* [hardfork](_index_.blockchainoptions.md#optional-hardfork)
+* [genesisBlock](_index_.blockchainoptions.md#optional-genesisblock)
 * [validateBlocks](_index_.blockchainoptions.md#optional-validateblocks)
-* [validatePow](_index_.blockchainoptions.md#optional-validatepow)
+* [validateConsensus](_index_.blockchainoptions.md#optional-validateconsensus)
 
 ## Properties
-
-### `Optional` chain
-
-• **chain**? : *string | number*
-
-*Defined in [index.ts:63](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/blockchain/src/index.ts#L63)*
-
-The chain id or name. Default: `"mainnet"`.
-
-___
 
 ### `Optional` common
 
 • **common**? : *Common*
 
-*Defined in [index.ts:74](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/blockchain/src/index.ts#L74)*
+*Defined in [index.ts:57](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/blockchain/src/index.ts#L57)*
 
-An alternative way to specify the chain and hardfork is by passing a Common instance.
+Specify the chain and hardfork by passing a Common instance.
+
+If not provided this defaults to chain `mainnet` and hardfork `chainstart`
 
 ___
 
@@ -45,20 +36,24 @@ ___
 
 • **db**? : *LevelUp*
 
-*Defined in [index.ts:79](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/blockchain/src/index.ts#L79)*
+*Defined in [index.ts:63](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/blockchain/src/index.ts#L63)*
 
-Database to store blocks and metadata. Should be an abstract-leveldown compliant store.
+Database to store blocks and metadata. Should be an abstract-leveldown
+compliant store.
 
 ___
 
-### `Optional` hardfork
+### `Optional` genesisBlock
 
-• **hardfork**? : *string | null*
+• **genesisBlock**? : *Block*
 
-*Defined in [index.ts:69](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/blockchain/src/index.ts#L69)*
+*Defined in [index.ts:89](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/blockchain/src/index.ts#L89)*
 
-Hardfork for the blocks. If `undefined` or `null` is passed, it gets computed based on block
-numbers.
+The blockchain only initializes succesfully if it has a genesis block. If
+there is no block available in the DB and a `genesisBlock` is provided,
+then the provided `genesisBlock` will be used as genesis If no block is
+present in the DB and no block is provided, then the genesis block as
+provided from the `common` will be used
 
 ___
 
@@ -66,18 +61,22 @@ ___
 
 • **validateBlocks**? : *undefined | false | true*
 
-*Defined in [index.ts:91](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/blockchain/src/index.ts#L91)*
+*Defined in [index.ts:80](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/blockchain/src/index.ts#L80)*
 
-This flags indicates if blocks should be validated. See Block#validate for details. If
-`validate` is provided, this option takes its value. If neither `validate` nor this option are
-provided, it defaults to `true`.
+This flag indicates if protocol-given consistency checks on
+block headers and included uncles and transactions should be performed,
+see Block#validate for details.
 
 ___
 
-### `Optional` validatePow
+### `Optional` validateConsensus
 
-• **validatePow**? : *undefined | false | true*
+• **validateConsensus**? : *undefined | false | true*
 
-*Defined in [index.ts:84](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/blockchain/src/index.ts#L84)*
+*Defined in [index.ts:72](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/blockchain/src/index.ts#L72)*
 
-This flags indicates if Proof-of-work should be validated. Defaults to `true`.
+This flags indicates if a block should be validated along the consensus algorithm
+or protocol used by the chain, e.g. by verifying the PoW on the block.
+
+Supported: 'pow' with 'ethash' algorithm (taken from the `Common` instance)
+Default: `true`.

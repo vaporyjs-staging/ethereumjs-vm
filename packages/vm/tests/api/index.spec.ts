@@ -1,6 +1,6 @@
-import * as tape from 'tape'
+import tape from 'tape'
 import { KECCAK256_RLP, toBuffer } from 'ethereumjs-util'
-import { SecureTrie as Trie } from 'merkle-patricia-tree'
+import { SecureTrie as Trie } from '@ethereumjs/trie'
 import { Block } from '@ethereumjs/block'
 import Common from '@ethereumjs/common'
 import { DefaultStateManager } from '../../lib/state'
@@ -11,6 +11,7 @@ import * as testData from './testdata.json'
 
 // explicitly import util and buffer,
 // needed for karma-typescript bundling
+// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
 import * as util from 'util'
 import { Buffer } from 'buffer'
 
@@ -21,40 +22,41 @@ tape('VM with default blockchain', (t) => {
     st.deepEqual(
       (vm.stateManager as DefaultStateManager)._trie.root,
       KECCAK256_RLP,
-      'it has default trie',
+      'it has default trie'
     )
+    st.equal(vm._common.hardfork(), 'istanbul', 'it has correct default HF')
     st.end()
   })
 
   t.test('should be able to activate precompiles', async (st) => {
-    let vm = new VM({ activatePrecompiles: true })
+    const vm = new VM({ activatePrecompiles: true })
     await vm.init()
     st.notDeepEqual(
       (vm.stateManager as DefaultStateManager)._trie.root,
       KECCAK256_RLP,
-      'it has different root',
+      'it has different root'
     )
     st.end()
   })
 
   t.test('should instantiate with async constructor', async (st) => {
-    let vm = await VM.create({ activatePrecompiles: true })
+    const vm = await VM.create({ activatePrecompiles: true })
     st.notDeepEqual(
       (vm.stateManager as DefaultStateManager)._trie.root,
       KECCAK256_RLP,
-      'it has different root',
+      'it has different root'
     )
     st.end()
   })
 
   t.test('should work with trie (state) provided', async (st) => {
-    let trie = new Trie()
-    let vm = new VM({ state: trie, activatePrecompiles: true })
+    const trie = new Trie()
+    const vm = new VM({ state: trie, activatePrecompiles: true })
     await vm.init()
     st.notDeepEqual(
       (vm.stateManager as DefaultStateManager)._trie.root,
       KECCAK256_RLP,
-      'it has different root',
+      'it has different root'
     )
     st.end()
   })
@@ -106,7 +108,7 @@ tape('VM with blockchain', (t) => {
     st.deepEqual(
       (vm.stateManager as DefaultStateManager)._trie.root,
       KECCAK256_RLP,
-      'it has default trie',
+      'it has default trie'
     )
     st.end()
   })
@@ -118,17 +120,16 @@ tape('VM with blockchain', (t) => {
   })
 
   t.test('should run blockchain with mocked runBlock', async (st) => {
-    const vm = setupVM({ common: new Common({ chain: 'goerli' }) })
+    const common = new Common({ chain: 'goerli' })
+    const genesisRlp = Buffer.from(testData.genesisRLP.slice(2), 'hex')
+    const genesisBlock = Block.fromRLPSerializedBlock(genesisRlp, { common })
+
+    const blockRlp = Buffer.from(testData.blocks[0].rlp.slice(2), 'hex')
+    const block = Block.fromRLPSerializedBlock(blockRlp, { common })
+
+    const vm = setupVM({ common, genesisBlock })
     await vm.init()
 
-    const genesis = new Block(Buffer.from(testData.genesisRLP.slice(2), 'hex'), {
-      common: vm._common,
-    })
-    const block = new Block(Buffer.from(testData.blocks[0].rlp.slice(2), 'hex'), {
-      common: vm._common,
-    })
-
-    await vm.blockchain.putGenesis(genesis)
     st.equal(vm.blockchain.meta.genesis?.toString('hex'), testData.genesisBlockHeader.hash.slice(2))
 
     await vm.blockchain.putBlock(block)
@@ -149,16 +150,17 @@ tape('VM with blockchain', (t) => {
   })
 
   t.test('should run blockchain with blocks', async (st) => {
-    const vm = setupVM({ common: new Common({ chain: 'goerli' }) })
-    await vm.init()
-    const genesis = new Block(toBuffer(testData.genesisRLP), {
-      common: vm._common,
-    })
-    const block = new Block(toBuffer(testData.blocks[0].rlp), {
-      common: vm._common,
-    })
+    const common = new Common({ chain: 'ropsten' })
 
-    await vm.blockchain.putGenesis(genesis)
+    const genesisRlp = toBuffer(testData.genesisRLP)
+    const genesisBlock = Block.fromRLPSerializedBlock(genesisRlp, { common })
+
+    const blockRlp = toBuffer(testData.blocks[0].rlp)
+    const block = Block.fromRLPSerializedBlock(blockRlp, { common })
+
+    const vm = setupVM({ common, genesisBlock })
+    await vm.init()
+
     st.equal(vm.blockchain.meta.genesis?.toString('hex'), testData.genesisBlockHeader.hash.slice(2))
 
     await vm.blockchain.putBlock(block)
@@ -173,14 +175,14 @@ tape('VM with blockchain', (t) => {
   })
 
   t.test('should pass the correct Common object when copying the VM', async (st) => {
-    const vm = setupVM({ common: new Common({ chain: 'goerli', hardfork: 'byzantium' }) })
+    const vm = setupVM({ common: new Common({ chain: 'ropsten', hardfork: 'byzantium' }) })
     await vm.init()
 
-    st.equal(vm._common.chainName(), 'goerli')
+    st.equal(vm._common.chainName(), 'ropsten')
     st.equal(vm._common.hardfork(), 'byzantium')
 
     const copiedVM = vm.copy()
-    st.equal(copiedVM._common.chainName(), 'goerli')
+    st.equal(copiedVM._common.chainName(), 'ropsten')
     st.equal(copiedVM._common.hardfork(), 'byzantium')
 
     st.end()

@@ -1,18 +1,22 @@
+/* eslint-disable no-dupe-class-members */
+
 import { Buffer } from 'buffer'
 import {
-  BN,
-  ecrecover,
-  rlphash,
-  publicToAddress,
-  ecsign,
-  toBuffer,
-  rlp,
-  unpadBuffer,
-  MAX_INTEGER,
   Address,
+  BN,
+  bnToHex,
+  bnToRlp,
+  ecrecover,
+  ecsign,
+  rlp,
+  rlphash,
+  toBuffer,
+  unpadBuffer,
+  publicToAddress,
+  MAX_INTEGER,
 } from 'ethereumjs-util'
 import Common from '@ethereumjs/common'
-import { TxOptions, TxData, JsonTx, bnToRlp, bnToHex } from './types'
+import { TxOptions, TxData, JsonTx } from './types'
 
 // secp256k1n/2
 const N_DIV_2 = new BN('7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0', 16)
@@ -33,20 +37,7 @@ export default class Transaction {
   public readonly s?: BN
 
   public static fromTxData(txData: TxData, opts?: TxOptions) {
-    const { nonce, gasLimit, gasPrice, to, value, data, v, r, s } = txData
-
-    return new Transaction(
-      new BN(toBuffer(nonce || '0x')),
-      new BN(toBuffer(gasPrice || '0x')),
-      new BN(toBuffer(gasLimit || '0x')),
-      to ? new Address(toBuffer(to)) : undefined,
-      new BN(toBuffer(value || '0x')),
-      toBuffer(data || '0x'),
-      new BN(toBuffer(v || '0x')),
-      new BN(toBuffer(r || '0x')),
-      new BN(toBuffer(s || '0x')),
-      opts,
-    )
+    return new Transaction(txData, opts)
   }
 
   public static fromRlpSerializedTx(serialized: Buffer, opts?: TxOptions) {
@@ -62,23 +53,25 @@ export default class Transaction {
   public static fromValuesArray(values: Buffer[], opts?: TxOptions) {
     if (values.length !== 6 && values.length !== 9) {
       throw new Error(
-        'Invalid transaction. Only expecting 6 values (for unsigned tx) or 9 values (for signed tx).',
+        'Invalid transaction. Only expecting 6 values (for unsigned tx) or 9 values (for signed tx).'
       )
     }
 
     const [nonce, gasPrice, gasLimit, to, value, data, v, r, s] = values
 
     return new Transaction(
-      new BN(nonce),
-      new BN(gasPrice),
-      new BN(gasLimit),
-      to && to.length > 0 ? new Address(to) : undefined,
-      new BN(value),
-      data || Buffer.from([]),
-      v ? new BN(v) : undefined,
-      r ? new BN(r) : undefined,
-      s ? new BN(s) : undefined,
-      opts,
+      {
+        nonce: new BN(nonce),
+        gasPrice: new BN(gasPrice),
+        gasLimit: new BN(gasLimit),
+        to: to && to.length > 0 ? new Address(to) : undefined,
+        value: new BN(value),
+        data: data || Buffer.from([]),
+        v: v ? new BN(v) : undefined,
+        r: r ? new BN(r) : undefined,
+        s: s ? new BN(s) : undefined,
+      },
+      opts
     )
   }
 
@@ -87,19 +80,27 @@ export default class Transaction {
    * Use the static factory methods to assist in creating a Transaction object from varying data types.
    * @note Transaction objects implement EIP155 by default. To disable it, pass in an `@ethereumjs/common` object set before EIP155 activation (i.e. before Spurious Dragon).
    */
-  constructor(
-    nonce: BN,
-    gasPrice: BN,
-    gasLimit: BN,
-    to: Address | undefined,
-    value: BN,
-    data: Buffer,
-    v?: BN,
-    r?: BN,
-    s?: BN,
-    opts?: TxOptions,
-  ) {
-    const validateCannotExceedMaxInteger = { nonce, gasPrice, gasLimit, value, r, s }
+  constructor(txData: TxData, opts?: TxOptions) {
+    const { nonce, gasPrice, gasLimit, to, value, data, v, r, s } = txData
+
+    this.nonce = new BN(toBuffer(nonce))
+    this.gasPrice = new BN(toBuffer(gasPrice))
+    this.gasLimit = new BN(toBuffer(gasLimit))
+    this.to = to ? new Address(toBuffer(to)) : undefined
+    this.value = new BN(toBuffer(value))
+    this.data = toBuffer(data)
+    this.v = new BN(toBuffer(v))
+    this.r = new BN(toBuffer(r))
+    this.s = new BN(toBuffer(s))
+
+    const validateCannotExceedMaxInteger = {
+      nonce: this.nonce,
+      gasPrice: this.gasPrice,
+      gasLimit: this.gasLimit,
+      value: this.value,
+      r: this.r,
+      s: this.s,
+    }
     for (const [key, value] of Object.entries(validateCannotExceedMaxInteger)) {
       if (value && value.gt(MAX_INTEGER)) {
         throw new Error(`${key} cannot exceed MAX_INTEGER, given ${value}`)
@@ -113,19 +114,12 @@ export default class Transaction {
       this.common = new Common({ chain: DEFAULT_CHAIN })
     }
 
-    this._validateTxV(v)
+    this._validateTxV(this.v)
 
-    this.nonce = nonce
-    this.gasPrice = gasPrice
-    this.gasLimit = gasLimit
-    this.to = to
-    this.value = value
-    this.data = data
-    this.v = v
-    this.r = r
-    this.s = s
-
-    Object.freeze(this)
+    const freeze = opts?.freeze ?? true
+    if (freeze) {
+      Object.freeze(this)
+    }
   }
 
   /**
@@ -146,9 +140,9 @@ export default class Transaction {
       this.to !== undefined ? this.to.buf : Buffer.from([]),
       bnToRlp(this.value),
       this.data,
-      bnToRlp(this.v),
-      bnToRlp(this.r),
-      bnToRlp(this.s),
+      this.v ? bnToRlp(this.v) : Buffer.from([]),
+      this.r ? bnToRlp(this.r) : Buffer.from([]),
+      this.s ? bnToRlp(this.s) : Buffer.from([]),
     ]
 
     return rlphash(values)
@@ -185,17 +179,22 @@ export default class Transaction {
     // All transaction signatures whose s-value is greater than secp256k1n/2 are considered invalid.
     if (this.common.gteHardfork('homestead') && this.s && this.s.gt(N_DIV_2)) {
       throw new Error(
-        'Invalid Signature: s-values greater than secp256k1n/2 are considered invalid',
+        'Invalid Signature: s-values greater than secp256k1n/2 are considered invalid'
       )
+    }
+
+    const { v, r, s } = this
+    if (!v || !r || !s) {
+      throw new Error('Missing values to derive sender public key from signed tx')
     }
 
     try {
       return ecrecover(
         msgHash,
-        this.v!.toNumber(),
-        bnToRlp(this.r),
-        bnToRlp(this.s),
-        this._signedTxImplementsEIP155() ? this.getChainId() : undefined,
+        v.toNumber(),
+        bnToRlp(r),
+        bnToRlp(s),
+        this._signedTxImplementsEIP155() ? this.getChainId() : undefined
       )
     } catch (e) {
       throw new Error('Invalid Signature')
@@ -207,7 +206,9 @@ export default class Transaction {
    */
   verifySignature(): boolean {
     try {
-      return unpadBuffer(this.getSenderPublicKey()).length !== 0
+      // Main signature verification is done in `getSenderPublicKey()`
+      const publicKey = this.getSenderPublicKey()
+      return unpadBuffer(publicKey).length !== 0
     } catch (e) {
       return false
     }
@@ -230,6 +231,8 @@ export default class Transaction {
 
     const msgHash = this.getMessageToSign()
 
+    // Only `v` is reassigned.
+    /* eslint-disable-next-line prefer-const */
     let { v, r, s } = ecsign(msgHash, privateKey)
 
     if (this._unsignedTxImplementsEIP155()) {
@@ -241,16 +244,18 @@ export default class Transaction {
     }
 
     return new Transaction(
-      this.nonce,
-      this.gasPrice,
-      this.gasLimit,
-      this.to,
-      this.value,
-      this.data,
-      new BN(v),
-      new BN(r),
-      new BN(s),
-      opts,
+      {
+        nonce: this.nonce,
+        gasPrice: this.gasPrice,
+        gasLimit: this.gasLimit,
+        to: this.to,
+        value: this.value,
+        data: this.data,
+        v: new BN(v),
+        r: new BN(r),
+        s: new BN(s),
+      },
+      opts
     )
   }
 
@@ -287,7 +292,9 @@ export default class Transaction {
   }
 
   /**
-   * Validates the signature and checks to see if it has enough gas.
+   * Validates the signature and checks if
+   * the transaction has the minimum amount of gas required
+   * (DataFee + TxFee + Creation Fee).
    */
   validate(): boolean
   validate(stringError: false): boolean
@@ -307,10 +314,10 @@ export default class Transaction {
   }
 
   /**
-   * Returns the rlp encoding of the transaction
+   * Returns a Buffer Array of the raw Buffers of this transaction, in order.
    */
-  serialize(): Buffer {
-    return rlp.encode([
+  raw(): Buffer[] {
+    return [
       bnToRlp(this.nonce),
       bnToRlp(this.gasPrice),
       bnToRlp(this.gasLimit),
@@ -320,7 +327,14 @@ export default class Transaction {
       this.v !== undefined ? bnToRlp(this.v) : Buffer.from([]),
       this.r !== undefined ? bnToRlp(this.r) : Buffer.from([]),
       this.s !== undefined ? bnToRlp(this.s) : Buffer.from([]),
-    ])
+    ]
+  }
+
+  /**
+   * Returns the rlp encoding of the transaction.
+   */
+  serialize(): Buffer {
+    return rlp.encode(this.raw())
   }
 
   /**
@@ -408,7 +422,7 @@ export default class Transaction {
 
     if (!isValidEIP155V) {
       throw new Error(
-        `Incompatible EIP155-based V ${vInt} and chain id ${this.getChainId()}. See the Common parameter of the Transaction constructor to set the chain id.`,
+        `Incompatible EIP155-based V ${vInt} and chain id ${this.getChainId()}. See the Common parameter of the Transaction constructor to set the chain id.`
       )
     }
   }

@@ -1,9 +1,9 @@
-import * as tape from 'tape'
+import tape from 'tape'
+import { Account, Address } from 'ethereumjs-util'
 import EEI from '../../../lib/evm/eei'
 import StateManager from '../../../lib/state/stateManager'
-import Account from '@ethereumjs/account'
 
-const ZeroAddress = Buffer.from('0000000000000000000000000000000000000000', 'hex')
+const ZeroAddress = Address.zero()
 
 tape('EEI', (t) => {
   t.test('should return false on non-existing accounts', async (st) => {
@@ -22,11 +22,12 @@ tape('EEI', (t) => {
       st.ok(await eei.accountExists(ZeroAddress))
       st.ok(await eei.isAccountEmpty(ZeroAddress))
       // now put a non-empty account
-      await eei._state.putAccount(ZeroAddress, new Account({ nonce: '0x01', balance: '0x01' }))
+      const nonEmptyAccount = Account.fromAccountData({ nonce: 1 })
+      await eei._state.putAccount(ZeroAddress, nonEmptyAccount)
       st.ok(await eei.accountExists(ZeroAddress))
       st.notOk(await eei.isAccountEmpty(ZeroAddress))
       st.end()
-    },
+    }
   )
 
   t.test('should return true on existing accounts', async (st) => {

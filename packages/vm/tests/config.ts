@@ -11,28 +11,11 @@ export const DEFAULT_FORK_CONFIG = 'Istanbul'
 export const SKIP_BROKEN = [
   'ForkStressTest', // Only BlockchainTest, temporary till fixed (2020-05-23)
   'ChainAtoChainB', // Only BlockchainTest, temporary, along expectException fixes (2020-05-23)
-  'sha3_bigOffset', // SHA3: Only BlockchainTest, unclear SHA3 test situation (2020-05-28) (https://github.com/ethereumjs/ethereumjs-vm/pull/743#issuecomment-635116418)
-  'sha3_memSizeNoQuadraticCost', // SHA3: See also:
-  'sha3_memSizeQuadraticCost', // SHA3: https://github.com/ethereumjs/ethereumjs-vm/pull/743#issuecomment-635116418
-  'sha3_bigSize', // SHA3
 
-  'BLOCK_difficulty_GivenAsList', // Block header.ts does try very hard (via `defineProperties`) to convert any fed data into Buffers. Test should throw because difficulty is a list of Buffers, but fails to throw
-
-  // these tests need "re-org" support in blockchain
+  // In these tests, we have access to two forked chains. Their total difficulty is equal. There are errors in the second chain, but we have no reason to execute this chain if the TD remains equal.
   'blockChainFrontierWithLargerTDvsHomesteadBlockchain2_FrontierToHomesteadAt5',
   'blockChainFrontierWithLargerTDvsHomesteadBlockchain_FrontierToHomesteadAt5',
   'HomesteadOverrideFrontier_FrontierToHomesteadAt5',
-  'DaoTransactions_HomesteadToDaoAt5',
-  'RPC_API_Test',
-  'lotsOfBranchesOverrideAtTheEnd',
-  'lotsOfBranchesOverrideAtTheMiddle',
-  'newChainFrom4Block',
-  'newChainFrom5Block',
-  'newChainFrom6Block',
-  'sideChainWithMoreTransactions',
-  'sideChainWithMoreTransactions2',
-  'sideChainWithNewMaxDifficultyStartingFromBlock3AfterBlock4',
-  'uncleBlockAtBlock3afterBlock4',
 ]
 
 /**
@@ -98,8 +81,9 @@ export const SKIP_SLOW = [
  * VMTests have been deprecated, see https://github.com/ethereum/tests/issues/593
  * skipVM test list is currently not used but might be useful in the future since VMTests
  * have now been converted to BlockchainTests, see https://github.com/ethereum/tests/pull/680
+ * Disabling this due to ESLint, but will keep it here for possible future reference
  */
-const SKIP_VM = [
+/*const SKIP_VM = [
   // slow performance tests
   'loop-mul',
   'loop-add-10M',
@@ -129,7 +113,7 @@ const SKIP_VM = [
   'callstatelessToReturn1',
   'createNameRegistrator',
   'randomTest643',
-]
+]*/
 
 /**
  * Returns an alias for specified hardforks to meet test dependencies requirements/assumptions.
@@ -238,8 +222,8 @@ const testLegacy: any = {
  * @param {string} Test type (BlockchainTests/StateTests)
  */
 export function getTestDirs(network: string, testType: string) {
-  let testDirs = [testType]
-  for (let key in testLegacy) {
+  const testDirs = [testType]
+  for (const key in testLegacy) {
     if (key.toLowerCase() == network.toLowerCase() && testLegacy[key]) {
       // Tests for HFs before Istanbul have been moved under `LegacyTests/Constantinople`:
       // https://github.com/ethereum/tests/releases/tag/v7.0.0-beta.1
@@ -261,7 +245,7 @@ export function getCommon(network: string) {
     // normal hard fork, return the common with this hard fork
     // find the right upper/lowercased version
     const hfName = normalHardforks.reduce((previousValue, currentValue) =>
-      currentValue.toLowerCase() == networkLowercase ? currentValue : previousValue,
+      currentValue.toLowerCase() == networkLowercase ? currentValue : previousValue
     )
     const mainnetCommon = new Common({ chain: 'mainnet', hardfork: hfName })
     const hardforks = mainnetCommon.hardforks()
@@ -291,7 +275,7 @@ export function getCommon(network: string) {
       {
         hardforks: testHardforks,
       },
-      hfName,
+      hfName
     )
   } else {
     // this is not a "default fork" network, but it is a "transition" network. we will test the VM if it transitions the right way
@@ -330,7 +314,7 @@ export function getCommon(network: string) {
       {
         hardforks: testHardforks,
       },
-      transitionForks.startFork,
+      transitionForks.startFork
     )
   }
 }
@@ -380,7 +364,7 @@ export function getExpectedTests(fork: string, name: string) {
   if (expectedTestsFull[name] == undefined) {
     return
   }
-  for (let key in expectedTestsFull[name]) {
+  for (const key in expectedTestsFull[name]) {
     if (fork.toLowerCase() == key.toLowerCase()) {
       return expectedTestsFull[name][key]
     }
@@ -400,8 +384,8 @@ export function getSkipTests(choices: string, defaultChoice: string): string[] {
   }
   choices = choices.toLowerCase()
   if (choices !== 'none') {
-    let choicesList = choices.split(',')
-    let all = choicesList.includes('all')
+    const choicesList = choices.split(',')
+    const all = choicesList.includes('all')
     if (all || choicesList.includes('broken')) {
       skipTests = skipTests.concat(SKIP_BROKEN)
     }

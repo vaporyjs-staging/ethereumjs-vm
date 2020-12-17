@@ -1,178 +1,233 @@
-import { BaseTrie as Trie } from 'merkle-patricia-tree'
-import { BN, rlp, keccak256, KECCAK256_RLP, baToJSON } from 'ethereumjs-util'
+/* eslint-disable no-dupe-class-members */
+
+import { BaseTrie as Trie } from '@ethereumjs/trie'
+import { BN, rlp, keccak256, KECCAK256_RLP } from 'ethereumjs-util'
 import Common from '@ethereumjs/common'
-import { Transaction } from '@ethereumjs/tx'
+import { Transaction, TxOptions } from '@ethereumjs/tx'
 import { BlockHeader } from './header'
-import { Blockchain, BlockData, BlockOptions } from './types'
+import { BlockData, BlockOptions, JsonBlock, BlockBuffer, Blockchain } from './types'
 
 /**
- * An object that represents the block
+ * An object that represents the block.
  */
 export class Block {
   public readonly header: BlockHeader
   public readonly transactions: Transaction[] = []
   public readonly uncleHeaders: BlockHeader[] = []
   public readonly txTrie = new Trie()
+  public readonly _common: Common
 
-  private readonly _common: Common
+  public static fromBlockData(blockData: BlockData = {}, opts?: BlockOptions) {
+    const { header: headerData, transactions: txsData, uncleHeaders: uhsData } = blockData
 
-  /**
-   * Creates a new block object
-   *
-   * Please solely use this constructor to pass in block header data
-   * and don't modfiy header data after initialization since this can lead to
-   * undefined behavior regarding HF rule implemenations within the class.
-   *
-   * @param data - The block's data.
-   * @param options - The options for this block (like the chain setup)
-   */
-  constructor(
-    data: Buffer | [Buffer[], Buffer[], Buffer[]] | BlockData = {},
-    options: BlockOptions = {},
-  ) {
-    // Checking at runtime, to prevent errors down the path for JavaScript consumers.
-    if (data === null) {
-      data = {}
-    }
-
-    let rawTransactions
-    let rawUncleHeaders
-
-    if (Buffer.isBuffer(data)) {
-      // We do this to silence a TS error. We know that after this statement, data is
-      // a [Buffer[], Buffer[], Buffer[]]
-      const dataAsAny = rlp.decode(data) as any
-      data = dataAsAny as [Buffer[], Buffer[], Buffer[]]
-    }
-
-    // Initialize the block header
-    if (Array.isArray(data)) {
-      this.header = new BlockHeader(data[0], options)
-      rawTransactions = data[1]
-      rawUncleHeaders = data[2]
-    } else {
-      this.header = new BlockHeader(data.header, options)
-      rawTransactions = data.transactions || []
-      rawUncleHeaders = data.uncleHeaders || []
-    }
-    this._common = this.header._common
-
-    // parse uncle headers
-    for (let i = 0; i < rawUncleHeaders.length; i++) {
-      this.uncleHeaders.push(new BlockHeader(rawUncleHeaders[i], options))
-    }
+    const header = BlockHeader.fromHeaderData(headerData, opts)
 
     // parse transactions
-    const txOpts = { common: this._common }
-    for (let i = 0; i < rawTransactions.length; i++) {
-      const txData = rawTransactions[i]
-      const tx = Array.isArray(txData)
-        ? Transaction.fromValuesArray(txData as Buffer[], txOpts)
-        : Transaction.fromRlpSerializedTx(txData as Buffer, txOpts)
-      this.transactions.push(tx)
+    const transactions = []
+    for (const txData of txsData || []) {
+      const tx = Transaction.fromTxData(txData, opts as TxOptions)
+      transactions.push(tx)
     }
+
+    // parse uncle headers
+    const uncleHeaders = []
+    for (const uhData of uhsData || []) {
+      const uh = BlockHeader.fromHeaderData(uhData, {
+        ...opts,
+        // Disable this option here (all other options carried over), since this overwrites the provided Difficulty to an incorrect value
+        calcDifficultyFromHeader: undefined,
+      })
+      uncleHeaders.push(uh)
+    }
+
+    return new Block(header, transactions, uncleHeaders, opts)
   }
 
-  get raw(): [Buffer[], Buffer[], Buffer[]] {
-    return this.serialize(false)
+  public static fromRLPSerializedBlock(serialized: Buffer, opts?: BlockOptions) {
+    const values = (rlp.decode(serialized) as any) as BlockBuffer
+
+    if (!Array.isArray(values)) {
+      throw new Error('Invalid serialized block input. Must be array')
+    }
+
+    return Block.fromValuesArray(values, opts)
+  }
+
+  public static fromValuesArray(values: BlockBuffer, opts?: BlockOptions) {
+    if (values.length > 3) {
+      throw new Error('invalid block. More values than expected were received')
+    }
+
+    const [headerData, txsData, uhsData] = values
+
+    const header = BlockHeader.fromValuesArray(headerData, opts)
+
+    // parse transactions
+    const transactions = []
+    for (const txData of txsData || []) {
+      transactions.push(Transaction.fromValuesArray(txData, opts))
+    }
+
+    // parse uncle headers
+    const uncleHeaders = []
+    for (const uncleHeaderData of uhsData || []) {
+      uncleHeaders.push(
+        BlockHeader.fromValuesArray(uncleHeaderData, {
+          ...opts,
+          // Disable this option here (all other options carried over), since this overwrites the provided Difficulty to an incorrect value
+          calcDifficultyFromHeader: undefined,
+        })
+      )
+    }
+
+    return new Block(header, transactions, uncleHeaders, opts)
   }
 
   /**
-   * Produces a hash the RLP of the block
+   * Alias for Block.fromBlockData() with initWithGenesisHeader set to true.
+   */
+  public static genesis(blockData: BlockData = {}, opts?: BlockOptions) {
+    opts = { ...opts, initWithGenesisHeader: true }
+    return Block.fromBlockData(blockData, opts)
+  }
+
+  /**
+   * This constructor takes the values, validates them, assigns them and freezes the object.
+   * Use the static factory methods to assist in creating a Block object from varying data types and options.
+   */
+  constructor(
+    header?: BlockHeader,
+    transactions: Transaction[] = [],
+    uncleHeaders: BlockHeader[] = [],
+    opts: BlockOptions = {}
+  ) {
+    this.header = header || BlockHeader.fromHeaderData({}, opts)
+    this.transactions = transactions
+    this.uncleHeaders = uncleHeaders
+    this._common = this.header._common
+
+    const freeze = opts?.freeze ?? true
+    if (freeze) {
+      Object.freeze(this)
+    }
+  }
+
+  /**
+   *  Returns a Buffer Array of the raw Buffers of this block, in order.
+   */
+  raw(): BlockBuffer {
+    return [
+      this.header.raw(),
+      this.transactions.map((tx) => tx.raw()),
+      this.uncleHeaders.map((uh) => uh.raw()),
+    ]
+  }
+
+  /**
+   * Produces a hash the RLP of the block.
    */
   hash(): Buffer {
     return this.header.hash()
   }
 
   /**
-   * Determines if this block is the genesis block
+   * Determines if this block is the genesis block.
    */
   isGenesis(): boolean {
     return this.header.isGenesis()
   }
 
   /**
-   * Produces a serialization of the block.
-   *
-   * @param rlpEncode - If `true`, the returned object is the RLP encoded data as seen by the
-   * Ethereum wire protocol. If `false`, a tuple with the raw data of the header, the txs and the
-   * uncle headers is returned.
+   * Returns the rlp encoding of the block.
    */
-  serialize(): Buffer
-  serialize(rlpEncode: true): Buffer
-  serialize(rlpEncode: false): [Buffer[], Buffer[], Buffer[]]
-  serialize(rlpEncode = true) {
-    const raw = [
-      this.header.raw,
-      this.transactions.map((tx) => tx.serialize()),
-      this.uncleHeaders.map((uh) => uh.raw),
-    ]
-
-    return rlpEncode ? rlp.encode(raw) : raw
+  serialize(): Buffer {
+    return rlp.encode(this.raw())
   }
 
   /**
-   * Generate transaction trie. The tx trie must be generated before the transaction trie can
-   * be validated with `validateTransactionTrie`
+   * Generates transaction trie for validation.
    */
   async genTxTrie(): Promise<void> {
-    for (let i = 0; i < this.transactions.length; i++) {
-      const tx = this.transactions[i]
-      await this._putTxInTrie(i, tx)
+    const { transactions, txTrie } = this
+    for (let i = 0; i < transactions.length; i++) {
+      const tx = transactions[i]
+      const key = rlp.encode(i)
+      const value = tx.serialize()
+      await txTrie.put(key, value)
     }
   }
 
   /**
-   * Validates the transaction trie
+   * Validates the transaction trie by generating a trie
+   * and do a check on the root hash.
    */
-  validateTransactionsTrie(): boolean {
-    if (this.transactions.length) {
-      return this.header.transactionsTrie.equals(this.txTrie.root)
-    } else {
+  async validateTransactionsTrie(): Promise<boolean> {
+    if (this.transactions.length === 0) {
       return this.header.transactionsTrie.equals(KECCAK256_RLP)
     }
+
+    if (this.txTrie.root.equals(KECCAK256_RLP)) {
+      await this.genTxTrie()
+    }
+
+    return this.txTrie.root.equals(this.header.transactionsTrie)
   }
 
   /**
-   * Validates the transactions
+   * Validates transaction signatures and minimum gas requirements.
    *
    * @param stringError - If `true`, a string with the indices of the invalid txs is returned.
    */
   validateTransactions(): boolean
   validateTransactions(stringError: false): boolean
-  validateTransactions(stringError: true): string
+  validateTransactions(stringError: true): string[]
   validateTransactions(stringError = false) {
     const errors: string[] = []
 
     this.transactions.forEach(function (tx, i) {
       const errs = tx.validate(true)
-      if (errs.length !== 0) {
+      if (errs.length > 0) {
         errors.push(`errors at tx ${i}: ${errs.join(', ')}`)
       }
     })
 
-    return stringError ? errors.join(' ') : errors.length === 0
+    return stringError ? errors : errors.length === 0
   }
 
   /**
-   * Validates the entire block, throwing if invalid.
+   * Performs the following consistency checks on the block:
    *
-   * @param blockchain - the blockchain that this block wants to be part of
+   * - Value checks on the header fields
+   * - Signature and gasLimit validation for included txs
+   * - Validation of the tx trie
+   * - Consistency checks and header validation of included uncles
+   *
+   * Throws if invalid.
+   *
+   * @param blockchain - validate against a @ethereumjs/blockchain
    */
   async validate(blockchain: Blockchain): Promise<void> {
-    await Promise.all([
-      this.validateUncles(blockchain),
-      this.genTxTrie(),
-      this.header.validate(blockchain),
-    ])
-
-    if (!this.validateTransactionsTrie()) {
-      throw new Error('invalid transaction trie')
+    await this.header.validate(blockchain)
+    await this.validateUncles(blockchain)
+    await this.validateData()
+  }
+  /**
+   * Validates the block data, throwing if invalid.
+   * This can be checked on the Block itself without needing access to any parent block
+   * It checks:
+   * - All transactions are valid
+   * - The transactions trie is valid
+   * - The uncle hash is valid
+   */
+  async validateData(): Promise<void> {
+    const txErrors = this.validateTransactions(true)
+    if (txErrors.length > 0) {
+      throw new Error(`invalid transactions: ${txErrors.join(' ')}`)
     }
 
-    const txErrors = this.validateTransactions(true)
-    if (txErrors !== '') {
-      throw new Error(txErrors)
+    const validateTxTrie = await this.validateTransactionsTrie()
+    if (!validateTxTrie) {
+      throw new Error('invalid transaction trie')
     }
 
     if (!this.validateUnclesHash()) {
@@ -181,66 +236,178 @@ export class Block {
   }
 
   /**
-   * Validates the uncle's hash
+   * Validates the uncle's hash.
    */
   validateUnclesHash(): boolean {
-    const raw = rlp.encode(this.uncleHeaders.map((uh) => uh.raw))
-
+    const raw = rlp.encode(this.uncleHeaders.map((uh) => uh.raw()))
     return keccak256(raw).equals(this.header.uncleHash)
   }
 
   /**
-   * Validates the uncles that are in the block, if any. This method throws if they are invalid.
+   * Consistency checks and header validation for uncles included,
+   * in the block, if any.
    *
-   * @param blockchain - the blockchain that this block wants to be part of
+   * Throws if invalid.
+   *
+   * The rules of uncles are the following:
+   * Uncle Header is a valid header.
+   * Uncle Header is an orphan, i.e. it is not one of the headers of the canonical chain.
+   * Uncle Header has a parentHash which points to the canonical chain. This parentHash is within the last 7 blocks.
+   * Uncle Header is not already included as uncle in another block.
+   * Header has at most 2 uncles.
+   * Header does not count an uncle twice.
+   *
+   * @param blockchain - additionally validate against an @ethereumjs/blockchain instance
    */
   async validateUncles(blockchain: Blockchain): Promise<void> {
     if (this.isGenesis()) {
       return
     }
 
+    // Header has at most 2 uncles
     if (this.uncleHeaders.length > 2) {
       throw new Error('too many uncle headers')
     }
 
+    // Header does not count an uncle twice.
     const uncleHashes = this.uncleHeaders.map((header) => header.hash().toString('hex'))
-
     if (!(new Set(uncleHashes).size === uncleHashes.length)) {
       throw new Error('duplicate uncles')
     }
 
-    await Promise.all(
-      this.uncleHeaders.map(async (uh) => this._validateUncleHeader(uh, blockchain)),
-    )
+    await this._validateUncleHeaders(this.uncleHeaders, blockchain)
   }
 
   /**
-   * Returns the block in JSON format
+   * Returns the canonical difficulty for this block.
    *
-   * @see {@link https://github.com/ethereumjs/ethereumjs-util/blob/master/docs/index.md#defineproperties|ethereumjs-util}
+   * @param parentBlock - the parent of this `Block`
    */
-  toJSON(labeled: boolean = false) {
-    if (labeled) {
-      return {
-        header: this.header.toJSON(true),
-        transactions: this.transactions.map((tx) => tx.toJSON()),
-        uncleHeaders: this.uncleHeaders.forEach((uh) => uh.toJSON(true)),
-      }
-    } else {
-      return baToJSON(this.raw)
+  canonicalDifficulty(parentBlock: Block): BN {
+    return this.header.canonicalDifficulty(parentBlock.header)
+  }
+
+  /**
+   * Checks that the block's `difficulty` matches the canonical difficulty.
+   *
+   * @param parentBlock - the parent of this `Block`
+   */
+  validateDifficulty(parentBlock: Block): boolean {
+    return this.header.validateDifficulty(parentBlock.header)
+  }
+
+  /**
+   * Validates if the block gasLimit remains in the
+   * boundaries set by the protocol.
+   *
+   * @param parentBlock - the parent of this `Block`
+   */
+  validateGasLimit(parentBlock: Block): boolean {
+    return this.header.validateGasLimit(parentBlock.header)
+  }
+
+  /**
+   * Returns the block in JSON format.
+   */
+  toJSON(): JsonBlock {
+    return {
+      header: this.header.toJSON(),
+      transactions: this.transactions.map((tx) => tx.toJSON()),
+      uncleHeaders: this.uncleHeaders.map((uh) => uh.toJSON()),
     }
   }
 
-  private async _putTxInTrie(txIndex: number, tx: Transaction) {
-    await this.txTrie.put(rlp.encode(txIndex), tx.serialize())
+  /**
+   * The following rules are checked in this method:
+   * Uncle Header is a valid header.
+   * Uncle Header is an orphan, i.e. it is not one of the headers of the canonical chain.
+   * Uncle Header has a parentHash which points to the canonical chain. This parentHash is within the last 7 blocks.
+   * Uncle Header is not already included as uncle in another block.
+   * @param uncleHeaders - list of uncleHeaders
+   * @param blockchain - pointer to the blockchain
+   */
+  private async _validateUncleHeaders(uncleHeaders: BlockHeader[], blockchain: Blockchain) {
+    if (uncleHeaders.length == 0) {
+      return
+    }
+
+    // Each Uncle Header is a valid header
+    await Promise.all(uncleHeaders.map((uh) => uh.validate(blockchain, this.header.number)))
+
+    // Check how many blocks we should get in order to validate the uncle.
+    // In the worst case, we get 8 blocks, in the best case, we only get 1 block.
+    const canonicalBlockMap: Block[] = []
+    let lowestUncleNumber = this.header.number.clone()
+
+    uncleHeaders.map((header) => {
+      if (header.number.lt(lowestUncleNumber)) {
+        lowestUncleNumber = header.number.clone()
+      }
+    })
+
+    // Helper variable: set hash to `true` if hash is part of the canonical chain
+    const canonicalChainHashes: { [key: string]: boolean } = {}
+
+    // Helper variable: set hash to `true` if uncle hash is included in any canonical block
+    const includedUncles: { [key: string]: boolean } = {}
+
+    // Due to the header validation check above, we know that `getBlocks` it between 1 and 8 inclusive.
+    const getBlocks = this.header.number.clone().sub(lowestUncleNumber).addn(1).toNumber()
+
+    // See Geth: https://github.com/ethereum/go-ethereum/blob/b63bffe8202d46ea10ac8c4f441c582642193ac8/consensus/ethash/consensus.go#L207
+    // Here we get the necessary blocks from the chain.
+    let parentHash = this.header.parentHash
+    for (let i = 0; i < getBlocks; i++) {
+      const parentBlock = await this._getBlockByHash(blockchain, parentHash)
+      if (!parentBlock) {
+        throw new Error('could not find parent block')
+      }
+      canonicalBlockMap.push(parentBlock)
+
+      // mark block hash as part of the canonical chain
+      canonicalChainHashes[parentBlock.hash().toString('hex')] = true
+
+      // for each of the uncles, mark the uncle as included
+      parentBlock.uncleHeaders.map((uh) => {
+        includedUncles[uh.hash().toString('hex')] = true
+      })
+
+      parentHash = parentBlock.header.parentHash
+    }
+
+    // Here we check:
+    // Uncle Header is an orphan, i.e. it is not one of the headers of the canonical chain.
+    // Uncle Header is not already included as uncle in another block.
+    // Uncle Header has a parentHash which points to the canonical chain.
+
+    uncleHeaders.map((uh) => {
+      const uncleHash = uh.hash().toString('hex')
+      const parentHash = uh.parentHash.toString('hex')
+
+      if (!canonicalChainHashes[parentHash]) {
+        throw new Error('The parent hash of the uncle header is not part of the canonical chain')
+      }
+
+      if (includedUncles[uncleHash]) {
+        throw new Error('The uncle is already included in the canonical chain')
+      }
+
+      if (canonicalChainHashes[uncleHash]) {
+        throw new Error('The uncle is a canonical block')
+      }
+    })
   }
 
-  private _validateUncleHeader(uncleHeader: BlockHeader, blockchain: Blockchain) {
-    // TODO: Validate that the uncle header hasn't been included in the blockchain yet.
-    // This is not possible in ethereumjs-blockchain since this PR was merged:
-    // https://github.com/ethereumjs/ethereumjs-blockchain/pull/47
-
-    const height = new BN(this.header.number)
-    return uncleHeader.validate(blockchain, height)
+  private async _getBlockByHash(blockchain: Blockchain, hash: Buffer): Promise<Block | undefined> {
+    try {
+      const block = await blockchain.getBlock(hash)
+      return block
+    } catch (error) {
+      if (error.type === 'NotFoundError') {
+        return undefined
+      } else {
+        throw error
+      }
+    }
   }
 }

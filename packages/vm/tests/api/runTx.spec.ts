@@ -1,5 +1,5 @@
-import * as tape from 'tape'
-import { BN, MAX_INTEGER } from 'ethereumjs-util'
+import tape from 'tape'
+import { Address, BN, MAX_INTEGER } from 'ethereumjs-util'
 import Common from '@ethereumjs/common'
 import { Transaction } from '@ethereumjs/tx'
 import VM from '../../lib'
@@ -32,7 +32,7 @@ tape('runTx', (t) => {
   t.test('should fail to run without signature', async (st) => {
     const tx = getTransaction(false)
     shouldFail(st, suite.runTx({ tx }), (e: Error) =>
-      st.ok(e.message.includes('Invalid Signature'), 'should fail with appropriate error'),
+      st.ok(e.message.includes('Invalid Signature'), 'should fail with appropriate error')
     )
     st.end()
   })
@@ -40,26 +40,23 @@ tape('runTx', (t) => {
   t.test('should fail without sufficient funds', async (st) => {
     const tx = getTransaction(true)
     shouldFail(st, suite.runTx({ tx }), (e: Error) =>
-      st.ok(
-        e.message.toLowerCase().includes('enough funds'),
-        'error should include "enough funds"',
-      ),
+      st.ok(e.message.toLowerCase().includes('enough funds'), 'error should include "enough funds"')
     )
     st.end()
   })
 })
 
 tape('should run simple tx without errors', async (t) => {
-  let vm = new VM()
+  const vm = new VM()
   const suite = setup(vm)
 
   const tx = getTransaction(true)
-  const caller = tx.getSenderAddress().buf
+  const caller = tx.getSenderAddress()
   const acc = createAccount()
 
   await suite.putAccount(caller, acc)
 
-  let res = await suite.runTx({ tx })
+  const res = await suite.runTx({ tx })
   t.true(res.gasUsed.gt(new BN(0)), 'should have used some gas')
 
   t.end()
@@ -71,12 +68,12 @@ tape('should fail when account balance overflows (call)', async (t) => {
 
   const tx = getTransaction(true, '0x01')
 
-  const caller = tx.getSenderAddress().buf
+  const caller = tx.getSenderAddress()
   const from = createAccount()
   await suite.putAccount(caller, from)
 
   const to = createAccount(new BN(0), MAX_INTEGER)
-  await suite.putAccount(tx.to!.buf, to)
+  await suite.putAccount(tx.to, to)
 
   const res = await suite.runTx({ tx })
 
@@ -91,11 +88,13 @@ tape('should fail when account balance overflows (create)', async (t) => {
 
   const tx = getTransaction(true, '0x01', true)
 
-  const caller = tx.getSenderAddress().buf
+  const caller = tx.getSenderAddress()
   const from = createAccount()
   await suite.putAccount(caller, from)
 
-  const contractAddress = Buffer.from('61de9dc6f6cff1df2809480882cfd3c2364b28f7', 'hex')
+  const contractAddress = new Address(
+    Buffer.from('61de9dc6f6cff1df2809480882cfd3c2364b28f7', 'hex')
+  )
   const to = createAccount(new BN(0), MAX_INTEGER)
   await suite.putAccount(contractAddress, to)
 
@@ -111,7 +110,7 @@ tape('should clear storage cache after every transaction', async (t) => {
   const vm = new VM({ common })
   const privateKey = Buffer.from(
     'e331b6d69882b4cb4ea581d88e0b604039a3de5967688d3dcffdd2270c0fd109',
-    'hex',
+    'hex'
   )
   /* Code which is deployed here: 
     PUSH1 01
@@ -120,12 +119,12 @@ tape('should clear storage cache after every transaction', async (t) => {
     INVALID
   */
   const code = Buffer.from('6001600055FE', 'hex')
-  const address = Buffer.from('00000000000000000000000000000000000000ff', 'hex')
+  const address = new Address(Buffer.from('00000000000000000000000000000000000000ff', 'hex'))
   await vm.stateManager.putContractCode(address, code)
   await vm.stateManager.putContractStorage(
     address,
     Buffer.from('00'.repeat(32), 'hex'),
-    Buffer.from('00'.repeat(31) + '01', 'hex'),
+    Buffer.from('00'.repeat(31) + '01', 'hex')
   )
   const tx = Transaction.fromTxData(
     {
@@ -134,10 +133,10 @@ tape('should clear storage cache after every transaction', async (t) => {
       gasLimit: 100000,
       to: address,
     },
-    { common },
+    { common }
   ).sign(privateKey)
 
-  await vm.stateManager.putAccount(tx.getSenderAddress().buf, createAccount())
+  await vm.stateManager.putAccount(tx.getSenderAddress(), createAccount())
 
   await vm.runTx({ tx }) // this tx will fail, but we have to ensure that the cache is cleared
 
@@ -154,7 +153,7 @@ tape('should clear storage cache after every transaction', async (t) => {
 
   const tx = getTransaction(true)
   const acc = createAccount()
-  const caller = tx.getSenderAddress().buf
+  const caller = tx.getSenderAddress()
   await suite.putAccount(caller, acc)
   await suite.cacheFlush()
   suite.vm.stateManager.cache.clear()
@@ -195,7 +194,7 @@ function getTransaction(sign = false, value = '0x00', createContract = false) {
   if (sign) {
     const privateKey = Buffer.from(
       'e331b6d69882b4cb4ea581d88e0b604039a3de5967688d3dcffdd2270c0fd109',
-      'hex',
+      'hex'
     )
     return tx.sign(privateKey)
   }

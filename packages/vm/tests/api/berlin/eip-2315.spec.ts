@@ -1,4 +1,4 @@
-import * as tape from 'tape'
+import tape from 'tape'
 import { BN } from 'ethereumjs-util'
 import VM from '../../../lib'
 import Common from '@ethereumjs/common'
@@ -149,7 +149,7 @@ tape('Berlin: EIP 2315 tests', (t) => {
       const result = await runTest(test, st)
       st.equal(undefined, result.exceptionError)
       st.end()
-    },
+    }
   )
 
   // The code recursively calls itself. It should error when the returns-stack grows above 1023

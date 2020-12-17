@@ -1,4 +1,4 @@
-# ethereumjs-blockchain
+# @ethereumjs/blockchain
 
 [![NPM Package][blockchain-npm-badge]][blockchain-npm-link]
 [![GitHub Issues][blockchain-issues-badge]][blockchain-issues-link]
@@ -6,17 +6,16 @@
 [![Code Coverage][blockchain-coverage-badge]][blockchain-coverage-link]
 [![Discord][discord-badge]][discord-link]
 
-A module to store and interact with blocks.
+| A module to store and interact with blocks. |
+| --- |
+
+Note: this `README` reflects the state of the library from `v5.0.0` onwards. See `README` from the [standalone repository](https://github.com/ethereumjs/ethereumjs-blockchain) for an introduction on the last preceeding release.
 
 # INSTALL
 
-`npm install ethereumjs-blockchain`
+`npm install @ethereumjs/blockchain`
 
-# API
-
-[Documentation](./docs/README.md)
-
-# EXAMPLE
+# USAGE
 
 The following is an example to iterate through an existing Geth DB (needs `level` to be installed separately).
 
@@ -24,23 +23,28 @@ This module performs write operations. Making a backup of your data before tryin
 
 ```typescript
 import Blockchain from '@ethereumjs/blockchain'
-import { bufferToInt } from 'ethereumjs-util'
 
 const level = require('level')
 
 const gethDbPath = './chaindata' // Add your own path here. It will get modified, see remarks.
 
+const common = new Common({ chain: 'ropsten' })
 const db = level(gethDbPath)
-const blockchain = new Blockchain({ db })
+// Use the safe static constructor which awaits the init method
+const blockchain = Blockchain.create({ common, db })
 
 blockchain.iterator('i', (block) => {
-  const blockNumber = bufferToInt(block.header.number)
+  const blockNumber = block.header.number.toString()
   const blockHash = block.hash().toString('hex')
   console.log(`Block ${blockNumber}: ${blockHash}`)
 })
 ```
 
 **WARNING**: Since `@ethereumjs/blockchain` is also doing write operations on the DB for safety reasons only run this on a copy of your database, otherwise this might lead to a compromised DB state.
+
+# API
+
+[Documentation](./docs/README.md)
 
 # EthereumJS
 

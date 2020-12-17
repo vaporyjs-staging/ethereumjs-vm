@@ -1,4 +1,4 @@
-import * as tape from 'tape'
+import tape from 'tape'
 import { BN } from 'ethereumjs-util'
 import VM from '../../lib'
 
@@ -22,7 +22,7 @@ tape('VM.runcode: initial program counter', (t) => {
   const vm = new VM()
 
   testCases.forEach((testData, i) => {
-    t.test('should start the execution at the specified pc or 0 #' + i, async (st) => {
+    t.test('should start the execution at the specified pc or 0 #' + i.toString(), async (st) => {
       const runCodeArgs = {
         code: Buffer.from(testData.code.join(''), 'hex'),
         pc: testData.pc,

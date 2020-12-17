@@ -1,6 +1,8 @@
+import { AddressLike, BNLike, BufferLike } from 'ethereumjs-util'
 import Common from '@ethereumjs/common'
-import { TxData } from '@ethereumjs/tx'
+import { TxData, JsonTx } from '@ethereumjs/tx'
 import { Block } from './block'
+import { BlockHeader } from './header'
 
 /**
  * An object to set to which blockchain the blocks and their headers belong. This could be specified
@@ -12,7 +14,9 @@ export interface BlockOptions {
    * A Common object defining the chain and the hardfork a block/block header belongs to.
    *
    * Default: `Common` object set to `mainnet` and the HF currently defined as the default
-   * hardfork in the `Common` class
+   * hardfork in the `Common` class.
+   *
+   * Current default hardfork: `istanbul`
    */
   common?: Common
   /**
@@ -32,41 +36,42 @@ export interface BlockOptions {
    * Default: `false`
    */
   initWithGenesisHeader?: boolean
+
+  /**
+   * If a preceding `BlockHeader` (usually the parent header) is given the preceding
+   * header will be used to calculate the difficulty for this block and the calculated
+   * difficulty takes precedence over a provided static `difficulty` value.
+   */
+  calcDifficultyFromHeader?: BlockHeader
+  /**
+   * A block object by default gets frozen along initialization. This gives you
+   * strong additional security guarantees on the consistency of the block parameters.
+   *
+   * If you need to deactivate the block freeze - e.g. because you want to subclass block and
+   * add aditional properties - it is strongly encouraged that you do the freeze yourself
+   * within your code instead.
+   *
+   * Default: true
+   */
+  freeze?: boolean
 }
-
-/**
- * Any object that can be transformed into a `Buffer`
- */
-export interface TransformableToBuffer {
-  toBuffer(): Buffer
-}
-
-/**
- * A hex string prefixed with `0x`.
- */
-export type PrefixedHexString = string
-
-/**
- * A Buffer, hex string prefixed with `0x`, Number, or an object with a toBuffer method such as BN.
- */
-export type BufferLike = Buffer | TransformableToBuffer | PrefixedHexString | number
 
 /**
  * A block header's data.
  */
-export interface BlockHeaderData {
+export interface HeaderData {
   parentHash?: BufferLike
   uncleHash?: BufferLike
-  coinbase?: BufferLike
+  coinbase?: AddressLike
   stateRoot?: BufferLike
   transactionsTrie?: BufferLike
   receiptTrie?: BufferLike
   bloom?: BufferLike
-  difficulty?: BufferLike
-  number?: BufferLike
-  gasLimit?: BufferLike
-  gasUsed?: BufferLike
-  timestamp?: BufferLike
+  difficulty?: BNLike
+  number?: BNLike
+  gasLimit?: BNLike
+  gasUsed?: BNLike
+  timestamp?: BNLike
   extraData?: BufferLike
   mixHash?: BufferLike
   nonce?: BufferLike
@@ -76,9 +81,51 @@ export interface BlockHeaderData {
  * A block's data.
  */
 export interface BlockData {
-  header?: Buffer | PrefixedHexString | BufferLike[] | BlockHeaderData
-  transactions?: Array<Buffer | PrefixedHexString | BufferLike[] | TxData>
-  uncleHeaders?: Array<Buffer | PrefixedHexString | BufferLike[] | BlockHeaderData>
+  /**
+   * Header data for the block
+   */
+  header?: HeaderData
+  transactions?: Array<TxData>
+  uncleHeaders?: Array<HeaderData>
+}
+
+export type BlockBuffer = [BlockHeaderBuffer, TransactionsBuffer, UncleHeadersBuffer]
+export type BlockHeaderBuffer = Buffer[]
+export type BlockBodyBuffer = [TransactionsBuffer, UncleHeadersBuffer]
+export type TransactionsBuffer = Buffer[][]
+export type UncleHeadersBuffer = Buffer[][]
+
+/**
+ * An object with the block's data represented as strings.
+ */
+export interface JsonBlock {
+  /**
+   * Header data for the block
+   */
+  header?: JsonHeader
+  transactions?: JsonTx[]
+  uncleHeaders?: JsonHeader[]
+}
+
+/**
+ * An object with the block header's data represented as strings.
+ */
+export interface JsonHeader {
+  parentHash?: string
+  uncleHash?: string
+  coinbase?: string
+  stateRoot?: string
+  transactionsTrie?: string
+  receiptTrie?: string
+  bloom?: string
+  difficulty?: string
+  number?: string
+  gasLimit?: string
+  gasUsed?: string
+  timestamp?: string
+  extraData?: string
+  mixHash?: string
+  nonce?: string
 }
 
 export interface Blockchain {

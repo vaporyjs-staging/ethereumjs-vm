@@ -1,16 +1,16 @@
-import BN = require('bn.js')
 import {
+  Account,
+  Address,
+  BN,
   generateAddress,
   generateAddress2,
   KECCAK256_NULL,
   MAX_INTEGER,
-  zeros,
 } from 'ethereumjs-util'
-import Account from '@ethereumjs/account'
 import { Block } from '@ethereumjs/block'
 import { ERROR, VmError } from '../exceptions'
 import { StateManager } from '../state/index'
-import { getPrecompile, PrecompileFunc, ripemdPrecompileAddress } from './precompiles'
+import { getPrecompile, PrecompileFunc } from './precompiles'
 import TxContext from './txContext'
 import Message from './message'
 import EEI from './eei'
@@ -27,7 +27,7 @@ export interface EVMResult {
   /**
    * Address of created account durint transaction, if any
    */
-  createdAddress?: Buffer
+  createdAddress?: Address
   /**
    * Contains the results from running the code, if any, as described in [[runCode]]
    */
@@ -70,7 +70,7 @@ export interface ExecResult {
 }
 
 export interface NewContractEvent {
-  address: Buffer
+  address: Address
   // The deployment code
   code: Buffer
 }
@@ -109,13 +109,13 @@ export default class EVM {
   _vm: any
   _state: StateManager
   _tx: TxContext
-  _block: any
+  _block: Block
   /**
    * Amount of gas to refund from deleting storage values
    */
   _refund: BN
 
-  constructor(vm: any, txContext: TxContext, block: any) {
+  constructor(vm: any, txContext: TxContext, block: Block) {
     this._vm = vm
     this._state = this._vm.stateManager
     this._tx = txContext
@@ -199,7 +199,7 @@ export default class EVM {
       result = await this.runPrecompile(
         message.code as PrecompileFunc,
         message.data,
-        message.gasLimit,
+        message.gasLimit
       )
     } else {
       result = await this.runInterpreter(message)
@@ -221,10 +221,7 @@ export default class EVM {
     message.to = await this._generateAddress(message)
     let toAccount = await this._state.getAccount(message.to)
     // Check for collision
-    if (
-      (toAccount.nonce && new BN(toAccount.nonce).gtn(0)) ||
-      !toAccount.codeHash.equals(KECCAK256_NULL)
-    ) {
+    if ((toAccount.nonce && toAccount.nonce.gtn(0)) || !toAccount.codeHash.equals(KECCAK256_NULL)) {
       return {
         gasUsed: message.gasLimit,
         createdAddress: message.to,
@@ -248,7 +245,7 @@ export default class EVM {
     toAccount = await this._state.getAccount(message.to)
     // EIP-161 on account creation and CREATE execution
     if (this._vm._common.gteHardfork('spuriousDragon')) {
-      toAccount.nonce = new BN(toAccount.nonce).addn(1).toArrayLike(Buffer)
+      toAccount.nonce.iaddn(1)
     }
 
     // Add tx value to the `to` account
@@ -279,7 +276,7 @@ export default class EVM {
     let returnFee = new BN(0)
     if (!result.exceptionError) {
       returnFee = new BN(result.returnValue.length).imuln(
-        this._vm._common.param('gasPrices', 'createData'),
+        this._vm._common.param('gasPrices', 'createData')
       )
       totalGas = totalGas.add(returnFee)
     }
@@ -295,7 +292,7 @@ export default class EVM {
     // If enough gas and allowed code size
     if (
       totalGas.lte(message.gasLimit) &&
-      (this._vm.allowUnlimitedContractSize || allowedCodeSize)
+      (this._vm._allowUnlimitedContractSize || allowedCodeSize)
     ) {
       result.gasUsed = totalGas
     } else {
@@ -331,17 +328,17 @@ export default class EVM {
   async runInterpreter(message: Message, opts: InterpreterOpts = {}): Promise<ExecResult> {
     const env = {
       blockchain: this._vm.blockchain, // Only used in BLOCKHASH
-      address: message.to || zeros(32),
-      caller: message.caller || zeros(32),
+      address: message.to || Address.zero(),
+      caller: message.caller || Address.zero(),
       callData: message.data || Buffer.from([0]),
       callValue: message.value || new BN(0),
       code: message.code as Buffer,
       isStatic: message.isStatic || false,
       depth: message.depth || 0,
       gasPrice: this._tx.gasPrice,
-      origin: this._tx.origin || message.caller || zeros(32),
+      origin: this._tx.origin || message.caller || Address.zero(),
       block: this._block || new Block(),
-      contract: await this._state.getAccount(message.to || zeros(32)),
+      contract: await this._state.getAccount(message.to || Address.zero()),
       codeAddress: message.codeAddress,
     }
     const eei = new EEI(env, this._state, this, this._vm._common, message.gasLimit.clone())
@@ -388,8 +385,8 @@ export default class EVM {
    * Returns code for precompile at the given address, or undefined
    * if no such precompile exists.
    */
-  getPrecompile(address: Buffer): PrecompileFunc {
-    return getPrecompile(address.toString('hex'), this._vm._common)
+  getPrecompile(address: Address): PrecompileFunc {
+    return getPrecompile(address, this._vm._common)
   }
 
   /**
@@ -398,7 +395,7 @@ export default class EVM {
   runPrecompile(
     code: PrecompileFunc,
     data: Buffer,
-    gasLimit: BN,
+    gasLimit: BN
   ): Promise<ExecResult> | ExecResult {
     if (typeof code !== 'function') {
       throw new Error('Invalid precompile')
@@ -427,36 +424,35 @@ export default class EVM {
     }
   }
 
-  async _generateAddress(message: Message): Promise<Buffer> {
+  async _generateAddress(message: Message): Promise<Address> {
     let addr
     if (message.salt) {
-      addr = generateAddress2(message.caller, message.salt, message.code as Buffer)
+      addr = generateAddress2(message.caller.buf, message.salt, message.code as Buffer)
     } else {
       const acc = await this._state.getAccount(message.caller)
-      const newNonce = new BN(acc.nonce).subn(1)
-      addr = generateAddress(message.caller, newNonce.toArrayLike(Buffer))
+      const newNonce = acc.nonce.subn(1)
+      addr = generateAddress(message.caller.buf, newNonce.toArrayLike(Buffer))
     }
-    return addr
+    return new Address(addr)
   }
 
   async _reduceSenderBalance(account: Account, message: Message): Promise<void> {
-    const newBalance = new BN(account.balance).sub(message.value)
-    account.balance = newBalance.toArrayLike(Buffer)
+    account.balance.isub(message.value)
     return this._state.putAccount(message.caller, account)
   }
 
   async _addToBalance(toAccount: Account, message: Message): Promise<void> {
-    const newBalance = new BN(toAccount.balance).add(message.value)
+    const newBalance = toAccount.balance.add(message.value)
     if (newBalance.gt(MAX_INTEGER)) {
       throw new VmError(ERROR.VALUE_OVERFLOW)
     }
-    toAccount.balance = newBalance.toArrayLike(Buffer)
+    toAccount.balance = newBalance
     // putAccount as the nonce may have changed for contract creation
     return this._state.putAccount(message.to, toAccount)
   }
 
-  async _touchAccount(address: Buffer): Promise<void> {
-    const acc = await this._state.getAccount(address)
-    return this._state.putAccount(address, acc)
+  async _touchAccount(address: Address): Promise<void> {
+    const account = await this._state.getAccount(address)
+    return this._state.putAccount(address, account)
   }
 }

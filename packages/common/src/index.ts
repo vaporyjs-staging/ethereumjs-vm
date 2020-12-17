@@ -15,7 +15,7 @@ export interface CommonOpts {
   /**
    * String identifier ('byzantium') for hardfork
    *
-   * Default: `petersburg`
+   * Default: `istanbul`
    */
   hardfork?: string
   /**
@@ -44,7 +44,7 @@ interface hardforkOptions {
  * Common class to access chain and hardfork parameters
  */
 export default class Common {
-  readonly DEFAULT_HARDFORK: string = 'petersburg'
+  readonly DEFAULT_HARDFORK: string = 'istanbul'
 
   private _chainParams: Chain
   private _hardfork: string
@@ -65,7 +65,7 @@ export default class Common {
     baseChain: string | number,
     customChainParams: Partial<Chain>,
     hardfork?: string,
-    supportedHardforks?: Array<string>,
+    supportedHardforks?: Array<string>
   ): Common {
     const standardChainParams = Common._getChainParams(baseChain)
 
@@ -233,7 +233,7 @@ export default class Common {
       const minHF = this.gteHardfork(EIPs[eip]['minimumHardfork'])
       if (!minHF) {
         throw new Error(
-          `${eip} cannot be activated on hardfork ${this.hardfork()}, minimumHardfork: ${minHF}`,
+          `${eip} cannot be activated on hardfork ${this.hardfork()}, minimumHardfork: ${minHF}`
         )
       }
     }
@@ -277,7 +277,7 @@ export default class Common {
     let value = null
     for (const hfChanges of HARDFORK_CHANGES) {
       // EIP-referencing HF file (e.g. berlin.json)
-      if (hfChanges[1].hasOwnProperty('eips')) {
+      if (hfChanges[1].hasOwnProperty('eips')) { // eslint-disable-line
         const hfEIPs = hfChanges[1]['eips']
         for (const eip of hfEIPs) {
           const valueEIP = this.paramByEIP(topic, name, eip)
@@ -316,7 +316,7 @@ export default class Common {
     if (eipParams[topic][name] === undefined) {
       return null
     }
-    let value = eipParams[topic][name].v
+    const value = eipParams[topic][name].v
     return value
   }
 
@@ -342,7 +342,7 @@ export default class Common {
   hardforkIsActiveOnBlock(
     hardfork: string | null,
     blockNumber: number,
-    opts?: hardforkOptions,
+    opts?: hardforkOptions
   ): boolean {
     opts = opts !== undefined ? opts : {}
     const onlySupported = opts.onlySupported === undefined ? false : opts.onlySupported
@@ -372,7 +372,7 @@ export default class Common {
   hardforkGteHardfork(
     hardfork1: string | null,
     hardfork2: string,
-    opts?: hardforkOptions,
+    opts?: hardforkOptions
   ): boolean {
     opts = opts !== undefined ? opts : {}
     const onlyActive = opts.onlyActive === undefined ? false : opts.onlyActive
@@ -596,7 +596,7 @@ export default class Common {
    * Returns the hardfork set
    * @returns Hardfork name
    */
-  hardfork(): string | null {
+  hardfork(): string {
     return this._hardfork
   }
 
@@ -630,5 +630,23 @@ export default class Common {
    */
   eips(): number[] {
     return this._eips
+  }
+
+  /**
+   * Returns the consensus type of the network
+   * Possible values: "pow"|"poa"
+   */
+  consensusType(): string {
+    return (<any>this._chainParams)['consensus']['type']
+  }
+
+  /**
+   * Returns the concrete consensus implementation
+   * algorithm or protocol for the network
+   * e.g. "ethash" for "pow" consensus type or
+   * "clique" for "poa" consensus type
+   */
+  consensusAlgorithm(): string {
+    return (<any>this._chainParams)['consensus']['algorithm']
   }
 }

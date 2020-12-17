@@ -28,7 +28,7 @@ for the intermediary state root
 
 *Inherited from [PreByzantiumTxReceipt](_runblock_.prebyzantiumtxreceipt.md).[bitvector](_runblock_.prebyzantiumtxreceipt.md#bitvector)*
 
-*Defined in [runBlock.ts:65](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runBlock.ts#L65)*
+*Defined in [runBlock.ts:78](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runBlock.ts#L78)*
 
 Bloom bitvector
 
@@ -40,7 +40,7 @@ ___
 
 *Inherited from [PreByzantiumTxReceipt](_runblock_.prebyzantiumtxreceipt.md).[gasUsed](_runblock_.prebyzantiumtxreceipt.md#gasused)*
 
-*Defined in [runBlock.ts:61](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runBlock.ts#L61)*
+*Defined in [runBlock.ts:74](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runBlock.ts#L74)*
 
 Gas used
 
@@ -52,7 +52,7 @@ ___
 
 *Inherited from [PreByzantiumTxReceipt](_runblock_.prebyzantiumtxreceipt.md).[logs](_runblock_.prebyzantiumtxreceipt.md#logs)*
 
-*Defined in [runBlock.ts:69](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runBlock.ts#L69)*
+*Defined in [runBlock.ts:82](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runBlock.ts#L82)*
 
 Logs emitted
 
@@ -62,6 +62,6 @@ ___
 
 • **stateRoot**: *Buffer*
 
-*Defined in [runBlock.ts:80](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runBlock.ts#L80)*
+*Defined in [runBlock.ts:93](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runBlock.ts#L93)*
 
 Intermediary state root

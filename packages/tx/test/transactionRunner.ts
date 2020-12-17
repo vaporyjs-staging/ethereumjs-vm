@@ -1,12 +1,11 @@
-import * as tape from 'tape'
-import * as minimist from 'minimist'
+import tape from 'tape'
+import minimist from 'minimist'
 import { toBuffer } from 'ethereumjs-util'
 import Common from '@ethereumjs/common'
 import Transaction from '../src/transaction'
 import { ForkName, ForkNamesMap, OfficialTransactionTestData } from './types'
 
-// We use require here because this module doesn't have types and this works better with ts-node.
-const testing = require('ethereumjs-testing')
+const testing = require('./testLoader')
 
 const argv = minimist(process.argv.slice(2))
 const file: string | undefined = argv.file
@@ -54,7 +53,7 @@ tape('TransactionTests', (t) => {
 
               const txIsValid = tx.validate()
 
-              const senderIsCorrect = sender === '0x' + forkTestData.sender
+              const senderIsCorrect = sender === `0x${forkTestData.sender}`
               const hashIsCorrect = hash === forkTestData.hash
 
               const hashAndSenderAreCorrect = forkTestData && senderIsCorrect && hashIsCorrect
@@ -64,7 +63,7 @@ tape('TransactionTests', (t) => {
               } else {
                 st.assert(
                   hashAndSenderAreCorrect && txIsValid,
-                  `Transaction should be valid on ${forkName}`,
+                  `Transaction should be valid on ${forkName}`
                 )
               }
             } catch (e) {
@@ -78,7 +77,7 @@ tape('TransactionTests', (t) => {
           st.end()
         })
       },
-      fileFilterRegex,
+      fileFilterRegex
     )
     .then(() => {
       t.end()

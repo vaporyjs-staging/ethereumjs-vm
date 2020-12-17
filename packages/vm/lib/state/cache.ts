@@ -1,5 +1,5 @@
+import { Account, Address } from 'ethereumjs-util'
 const Tree = require('functional-red-black-tree')
-import Account from '@ethereumjs/account'
 
 /**
  * @ignore
@@ -20,7 +20,7 @@ export default class Cache {
    * @param key - Address of account
    * @param val - Account
    */
-  put(key: Buffer, val: Account, fromTrie: boolean = false): void {
+  put(key: Address, val: Account, fromTrie: boolean = false): void {
     const modified = !fromTrie
     this._update(key, val, modified, false)
   }
@@ -29,25 +29,22 @@ export default class Cache {
    * Returns the queried account or an empty account.
    * @param key - Address of account
    */
-  get(key: Buffer): Account {
-    let account = this.lookup(key)
-    if (!account) {
-      account = new Account()
-    }
-    return account
+  get(key: Address): Account {
+    const account = this.lookup(key)
+    return account || new Account()
   }
 
   /**
    * Returns the queried account or undefined.
    * @param key - Address of account
    */
-  lookup(key: Buffer): Account | undefined {
-    const keyStr = key.toString('hex')
+  lookup(key: Address): Account | undefined {
+    const keyStr = key.buf.toString('hex')
 
     const it = this._cache.find(keyStr)
     if (it.node) {
-      const account = new Account(it.value.val)
-      return account
+      const rlp = it.value.val
+      return Account.fromRlpSerializedAccount(rlp)
     }
   }
 
@@ -55,8 +52,8 @@ export default class Cache {
    * Returns true if the key was deleted and thus existed in the cache earlier
    * @param key - trie key to lookup
    */
-  keyIsDeleted(key: Buffer): boolean {
-    const keyStr = key.toString('hex')
+  keyIsDeleted(key: Address): boolean {
+    const keyStr = key.buf.toString('hex')
     const it = this._cache.find(keyStr)
     if (it.node) {
       return it.value.deleted
@@ -68,10 +65,9 @@ export default class Cache {
    * Looks up address in underlying trie.
    * @param address - Address of account
    */
-  async _lookupAccount(address: Buffer): Promise<Account> {
-    const raw = await this._trie.get(address)
-    const account = new Account(raw)
-    return account
+  async _lookupAccount(address: Address): Promise<Account> {
+    const rlp = await this._trie.get(address.buf)
+    return rlp ? Account.fromRlpSerializedAccount(rlp) : new Account()
   }
 
   /**
@@ -79,14 +75,12 @@ export default class Cache {
    * in the underlying trie.
    * @param key - Address of account
    */
-  async getOrLoad(key: Buffer): Promise<Account> {
-    let account = this.lookup(key)
+  async getOrLoad(address: Address): Promise<Account> {
+    let account = this.lookup(address)
 
     if (!account) {
-      account = await this._lookupAccount(key)
-      if (account) {
-        this._update(key, account as Account, false, false)
-      }
+      account = await this._lookupAccount(address)
+      this._update(address, account, false, false)
     }
 
     return account
@@ -100,9 +94,9 @@ export default class Cache {
   async warm(addresses: string[]): Promise<void> {
     for (const addressHex of addresses) {
       if (addressHex) {
-        const address = Buffer.from(addressHex, 'hex')
+        const address = new Address(Buffer.from(addressHex, 'hex'))
         const account = await this._lookupAccount(address)
-        this._update(address, account as Account, false, false)
+        this._update(address, account, false, false)
       }
     }
   }
@@ -117,15 +111,17 @@ export default class Cache {
     while (next) {
       if (it.value && it.value.modified) {
         it.value.modified = false
-        it.value.val = it.value.val.serialize()
-        await this._trie.put(Buffer.from(it.key, 'hex'), it.value.val)
+        const accountRlp = it.value.val
+        const keyBuf = Buffer.from(it.key, 'hex')
+        await this._trie.put(keyBuf, accountRlp)
         next = it.hasNext
         it.next()
       } else if (it.value && it.value.deleted) {
         it.value.modified = false
         it.value.deleted = true
         it.value.val = new Account().serialize()
-        await this._trie.del(Buffer.from(it.key, 'hex'))
+        const keyBuf = Buffer.from(it.key, 'hex')
+        await this._trie.del(keyBuf)
         next = it.hasNext
         it.next()
       } else {
@@ -168,25 +164,18 @@ export default class Cache {
    * Marks address as deleted in cache.
    * @param key - Address
    */
-  del(key: Buffer): void {
+  del(key: Address): void {
     this._update(key, new Account(), false, true)
   }
 
-  _update(key: Buffer, val: Account, modified: boolean, deleted: boolean): void {
-    const keyHex = key.toString('hex')
+  _update(key: Address, value: Account, modified: boolean, deleted: boolean): void {
+    const keyHex = key.buf.toString('hex')
     const it = this._cache.find(keyHex)
+    const val = value.serialize()
     if (it.node) {
-      this._cache = it.update({
-        val: val,
-        modified: modified,
-        deleted: deleted,
-      })
+      this._cache = it.update({ val, modified, deleted })
     } else {
-      this._cache = this._cache.insert(keyHex, {
-        val: val,
-        modified: modified,
-        deleted: deleted,
-      })
+      this._cache = this._cache.insert(keyHex, { val, modified, deleted })
     }
   }
 }

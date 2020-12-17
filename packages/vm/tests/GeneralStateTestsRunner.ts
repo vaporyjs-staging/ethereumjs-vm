@@ -1,23 +1,23 @@
 import * as tape from 'tape'
-import { SecureTrie as Trie } from 'merkle-patricia-tree'
-import { BN, toBuffer } from 'ethereumjs-util'
+import { SecureTrie as Trie } from '@ethereumjs/trie'
+import { Account, BN, toBuffer } from 'ethereumjs-util'
 import Common from '@ethereumjs/common'
-import Account from '@ethereumjs/account'
 import { setupPreConditions, makeTx, makeBlockFromEnv } from './util'
+import { InterpreterStep } from '../lib/evm/interpreter'
 
 function parseTestCases(
   forkConfigTestSuite: string,
   testData: any,
   data: string | undefined,
   gasLimit: string | undefined,
-  value: string | undefined,
+  value: string | undefined
 ) {
   let testCases = []
 
   if (testData['post'][forkConfigTestSuite]) {
     testCases = testData['post'][forkConfigTestSuite].map((testCase: any) => {
-      let testIndexes = testCase['indexes']
-      let tx = { ...testData.transaction }
+      const testIndexes = testCase['indexes']
+      const tx = { ...testData.transaction }
       if (data !== undefined && testIndexes['data'] !== data) {
         return null
       }
@@ -70,23 +70,20 @@ async function runTestCase(options: any, testData: any, t: tape.Test) {
 
   const common = new Common({ chain: 'mainnet', hardfork, eips })
 
-  const vm = new VM({
-    state,
-    common: common,
-  })
+  const vm = new VM({ state, common })
 
   await setupPreConditions(vm.stateManager._trie, testData)
 
-  const tx = makeTx(testData.transaction, common)
+  const tx = makeTx(testData.transaction, { common })
 
   if (!tx.validate()) {
     throw new Error('Transaction is invalid')
   }
 
-  const block = makeBlockFromEnv(testData.env)
+  const block = makeBlockFromEnv(testData.env, { common })
 
   if (options.jsontrace) {
-    vm.on('step', function (e: any) {
+    vm.on('step', function (e: InterpreterStep) {
       let hexStack = []
       hexStack = e.stack.map((item: any) => {
         return '0x' + new BN(item).toString(16, 0)
@@ -94,7 +91,7 @@ async function runTestCase(options: any, testData: any, t: tape.Test) {
 
       const opTrace = {
         pc: e.pc,
-        op: e.opcode.opcode,
+        op: e.opcode.name,
         gas: '0x' + e.gasLeft.toString('hex'),
         gasCost: '0x' + e.opcode.fee.toString(16),
         stack: hexStack,
@@ -119,7 +116,7 @@ async function runTestCase(options: any, testData: any, t: tape.Test) {
     // expects the coinbase account to be deleted from state.
     // Without this ecmul_0-3_5616_28000_96 would fail.
     const account = await vm.stateManager.getAccount(block.header.coinbase)
-    if (new BN(account.balance).isZero()) {
+    if (account.balance.isZero()) {
       await vm.stateManager.putAccount(block.header.coinbase, new Account())
       await vm.stateManager.cleanupTouchedAccounts()
       await vm.stateManager._cache.flush()
@@ -139,7 +136,7 @@ export default async function runStateTest(options: any, testData: any, t: tape.
       testData,
       options.data,
       options.gasLimit,
-      options.value,
+      options.value
     )
     if (testCases.length === 0) {
       t.comment(`No ${options.forkConfigTestSuite} post state defined, skip test`)
@@ -150,6 +147,6 @@ export default async function runStateTest(options: any, testData: any, t: tape.
     }
   } catch (e) {
     console.log(e)
-    t.fail('error running test case for fork: ' + options.forkConfigTestSuite)
+    t.fail('error running test case for fork: ' + <string>options.forkConfigTestSuite)
   }
 }

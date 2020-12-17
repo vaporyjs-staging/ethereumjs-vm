@@ -1,12 +1,12 @@
-import BN = require('bn.js')
-import Account from '@ethereumjs/account'
+import { Account, Address, BN } from 'ethereumjs-util'
 import Common from '@ethereumjs/common'
 import { StateManager } from '../state/index'
 import { ERROR, VmError } from '../exceptions'
 import Memory from './memory'
 import Stack from './stack'
 import EEI from './eei'
-import { Opcode, handlers as opHandlers, OpHandler } from './opcodes'
+import { precompiles } from './precompiles'
+import { Opcode, handlers as opHandlers, OpHandler, AsyncOpHandler } from './opcodes'
 
 export interface InterpreterOpts {
   pc?: number
@@ -26,6 +26,8 @@ export interface RunState {
   _common: Common
   stateManager: StateManager
   eei: EEI
+  accessedAddresses: Set<string>
+  accessedStorage: Map<string, Set<string>>
 }
 
 export interface InterpreterResult {
@@ -40,7 +42,7 @@ export interface InterpreterStep {
   returnStack: BN[]
   pc: number
   depth: number
-  address: Buffer
+  address: Address
   memory: Buffer
   memoryWordCount: BN
   opcode: {
@@ -49,7 +51,7 @@ export interface InterpreterStep {
     isAsync: boolean
   }
   account: Account
-  codeAddress: Buffer
+  codeAddress: Address
 }
 
 interface JumpDests {
@@ -85,6 +87,8 @@ export default class Interpreter {
       _common: this._vm._common,
       stateManager: this._state,
       eei: this._eei,
+      accessedAddresses: new Set(),
+      accessedStorage: new Map(),
     }
   }
 
@@ -95,6 +99,8 @@ export default class Interpreter {
     const valid = this._getValidJumpDests(code)
     this._runState.validJumps = valid.jumps
     this._runState.validJumpSubs = valid.jumpSubs
+    this._initAccessedAddresses()
+    this._runState.accessedStorage.clear()
 
     // Check that the programCounter is in range
     const pc = this._runState.programCounter
@@ -146,7 +152,7 @@ export default class Interpreter {
     // Execute opcode handler
     const opFn = this.getOpHandler(opInfo)
     if (opInfo.isAsync) {
-      await opFn.apply(null, [this._runState])
+      await (<AsyncOpHandler>opFn).apply(null, [this._runState])
     } else {
       opFn.apply(null, [this._runState])
     }
@@ -196,13 +202,13 @@ export default class Interpreter {
      * @property {String} opcode the next opcode to be ran
      * @property {BN} gasLeft amount of gasLeft
      * @property {Array} stack an `Array` of `Buffers` containing the stack
-     * @property {Account} account the [`Account`](https://github.com/ethereum/ethereumjs-account) which owns the code running
-     * @property {Buffer} address the address of the `account`
+     * @property {Account} account the Account which owns the code running
+     * @property {Address} address the address of the `account`
      * @property {Number} depth the current number of calls deep the contract is
      * @property {Buffer} memory the memory of the VM as a `buffer`
      * @property {BN} memoryWordCount current size of memory in words
-     * @property {StateManager} stateManager a [`StateManager`](stateManager.md) instance (Beta API)
-     * @property {Buffer} codeAddress the address of the code which is currently being ran (this differs from `address` in a `DELEGATECALL` and `CALLCODE` call)
+     * @property {StateManager} stateManager a [[StateManager]] instance
+     * @property {Address} codeAddress the address of the code which is currently being ran (this differs from `address` in a `DELEGATECALL` and `CALLCODE` call)
      */
     return this._vm._emit('step', eventObj)
   }
@@ -230,5 +236,18 @@ export default class Interpreter {
     }
 
     return { jumps, jumpSubs }
+  }
+
+  // Populates accessedAddresses with 'pre-warmed' addresses. Includes
+  // tx.origin, `this` (e.g the address of the code being executed), and
+  // all the precompiles. (EIP 2929)
+  _initAccessedAddresses() {
+    this._runState.accessedAddresses.clear()
+    this._runState.accessedAddresses.add(this._eei._env.origin.toString())
+    this._runState.accessedAddresses.add(this._eei.getAddress().toString())
+
+    for (const address of Object.keys(precompiles)) {
+      this._runState.accessedAddresses.add(`0x${address}`)
+    }
   }
 }

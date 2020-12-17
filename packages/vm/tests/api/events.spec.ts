@@ -1,4 +1,4 @@
-import * as tape from 'tape'
+import tape from 'tape'
 import { toBuffer, bufferToHex } from 'ethereumjs-util'
 import { Transaction } from '@ethereumjs/tx'
 import { Block } from '@ethereumjs/block'
@@ -183,7 +183,7 @@ tape('VM events', (t) => {
 
     st.equal(
       bufferToHex(emitted.code),
-      '0x7f410000000000000000000000000000000000000000000000000000000000000060005260016000f3',
+      '0x7f410000000000000000000000000000000000000000000000000000000000000060005260016000f3'
     )
 
     st.end()

@@ -1,24 +1,33 @@
 const Set = require('core-js-pure/es/set')
-import { SecureTrie as Trie } from 'merkle-patricia-tree'
-import { BN, toBuffer, keccak256, KECCAK256_NULL } from 'ethereumjs-util'
+import { SecureTrie as Trie } from '@ethereumjs/trie'
+import {
+  Account,
+  Address,
+  BN,
+  toBuffer,
+  keccak256,
+  KECCAK256_NULL,
+  unpadBuffer,
+} from 'ethereumjs-util'
 import { encode, decode } from 'rlp'
 import Common from '@ethereumjs/common'
 import { genesisStateByName } from '@ethereumjs/common/dist/genesisStates'
-import Account from '@ethereumjs/account'
 import { StateManager, StorageDump } from './interface'
 import Cache from './cache'
 import { ripemdPrecompileAddress } from '../evm/precompiles'
+
+type AddressHex = string
 
 /**
  * Options for constructing a [[StateManager]].
  */
 export interface DefaultStateManagerOpts {
   /**
-   * Parameters of the chain ([`Common`](https://github.com/ethereumjs/ethereumjs-common))
+   * Parameters of the chain ([`Common`](https://github.com/ethereumjs/ethereumjs-vm/tree/master/packages/common))
    */
   common?: Common
   /**
-   * A [`merkle-patricia-tree`](https://github.com/ethereumjs/merkle-patricia-tree) instance
+   * An [`@ethereumjs/trie`](https://github.com/ethereumjs/ethereumjs-vm/tree/master/packages/trie) instance
    */
   trie?: Trie
 }
@@ -30,12 +39,12 @@ export interface DefaultStateManagerOpts {
 export default class DefaultStateManager implements StateManager {
   _common: Common
   _trie: Trie
-  _storageTries: any
+  _storageTries: { [key: string]: Trie }
   _cache: Cache
-  _touched: Set<string>
-  _touchedStack: Set<string>[]
+  _touched: Set<AddressHex>
+  _touchedStack: Set<AddressHex>[]
   _checkpointCount: number
-  _originalStorageCache: Map<string, Map<string, Buffer>>
+  _originalStorageCache: Map<AddressHex, Map<AddressHex, Buffer>>
 
   /**
    * Instantiate the StateManager interface.
@@ -48,7 +57,7 @@ export default class DefaultStateManager implements StateManager {
     this._common = common
 
     this._trie = opts.trie || new Trie()
-    this._storageTries = {} // the storage trie cache
+    this._storageTries = {}
     this._cache = new Cache(this._trie)
     this._touched = new Set()
     this._touchedStack = []
@@ -62,39 +71,36 @@ export default class DefaultStateManager implements StateManager {
    * checkpoints were reverted.
    */
   copy(): StateManager {
-    return new DefaultStateManager({ trie: this._trie.copy(false), common: this._common })
+    return new DefaultStateManager({
+      trie: this._trie.copy(false),
+      common: this._common,
+    })
   }
 
   /**
-   * Gets the [`@ethereumjs/account`](https://github.com/ethereumjs/ethereumjs-vm/tree/master/packages/account)
-   * associated with `address`. Returns an empty account if the account does not exist.
+   * Gets the account associated with `address`. Returns an empty account if the account does not exist.
    * @param address - Address of the `account` to get
    */
-  async getAccount(address: Buffer): Promise<Account> {
+  async getAccount(address: Address): Promise<Account> {
     const account = await this._cache.getOrLoad(address)
     return account
   }
 
   /**
-   * Saves an [`@ethereumjs/account`](https://github.com/ethereumjs/ethereumjs-vm/tree/master/packages/account)
-   * into state under the provided `address`.
+   * Saves an account into state under the provided `address`.
    * @param address - Address under which to store `account`
-   * @param account - The [`@ethereumjs/account`](https://github.com/ethereumjs/ethereumjs-vm/tree/master/packages/account) to store
+   * @param account - The account to store
    */
-  async putAccount(address: Buffer, account: Account): Promise<void> {
-    // TODO: dont save newly created accounts that have no balance
-    // if (toAccount.balance.toString('hex') === '00') {
-    // if they have money or a non-zero nonce or code, then write to tree
+  async putAccount(address: Address, account: Account): Promise<void> {
     this._cache.put(address, account)
     this.touchAccount(address)
   }
 
   /**
-   * Deletes an [`@ethereumjs/account`](https://github.com/ethereumjs/ethereumjs-vm/tree/master/packages/account)
-   * from state under the provided `address`. The account will also be removed from the state trie.
+   * Deletes an account from state under the provided `address`. The account will also be removed from the state trie.
    * @param address - Address of the account which should be deleted
    */
-  async deleteAccount(address: Buffer) {
+  async deleteAccount(address: Address) {
     this._cache.del(address)
     this.touchAccount(address)
   }
@@ -106,8 +112,8 @@ export default class DefaultStateManager implements StateManager {
    * event. Touched accounts that are empty will be cleared
    * at the end of the tx.
    */
-  touchAccount(address: Buffer): void {
-    this._touched.add(address.toString('hex'))
+  touchAccount(address: Address): void {
+    this._touched.add(address.buf.toString('hex'))
   }
 
   /**
@@ -116,17 +122,17 @@ export default class DefaultStateManager implements StateManager {
    * @param address - Address of the `account` to add the `code` for
    * @param value - The value of the `code`
    */
-  async putContractCode(address: Buffer, value: Buffer): Promise<void> {
+  async putContractCode(address: Address, value: Buffer): Promise<void> {
     const codeHash = keccak256(value)
 
     if (codeHash.equals(KECCAK256_NULL)) {
       return
     }
 
+    await this._trie._mainDB.put(codeHash, value)
+
     const account = await this.getAccount(address)
     account.codeHash = codeHash
-
-    await this._trie._mainDB.put(codeHash, value)
     await this.putAccount(address, account)
   }
 
@@ -136,7 +142,7 @@ export default class DefaultStateManager implements StateManager {
    * @returns {Promise<Buffer>} -  Resolves with the code corresponding to the provided address.
    * Returns an empty `Buffer` if the account has no associated code.
    */
-  async getContractCode(address: Buffer): Promise<Buffer> {
+  async getContractCode(address: Address): Promise<Buffer> {
     const account = await this.getAccount(address)
     if (!account.isContract()) {
       return Buffer.alloc(0)
@@ -150,7 +156,7 @@ export default class DefaultStateManager implements StateManager {
    * for an account and saves this in the storage cache.
    * @private
    */
-  async _lookupStorageTrie(address: Buffer): Promise<Trie> {
+  async _lookupStorageTrie(address: Address): Promise<Trie> {
     // from state trie
     const account = await this.getAccount(address)
     const storageTrie = this._trie.copy(false)
@@ -164,9 +170,10 @@ export default class DefaultStateManager implements StateManager {
    * cache or does a lookup.
    * @private
    */
-  async _getStorageTrie(address: Buffer): Promise<Trie> {
+  async _getStorageTrie(address: Address): Promise<Trie> {
     // from storage cache
-    let storageTrie = this._storageTries[address.toString('hex')]
+    const addressHex = address.buf.toString('hex')
+    let storageTrie = this._storageTries[addressHex]
     if (!storageTrie) {
       // lookup from state
       storageTrie = await this._lookupStorageTrie(address)
@@ -183,7 +190,7 @@ export default class DefaultStateManager implements StateManager {
    * corresponding to the provided address at the provided key.
    * If this does not exist an empty `Buffer` is returned.
    */
-  async getContractStorage(address: Buffer, key: Buffer): Promise<Buffer> {
+  async getContractStorage(address: Address, key: Buffer): Promise<Buffer> {
     if (key.length !== 32) {
       throw new Error('Storage key must be 32 bytes long')
     }
@@ -202,20 +209,20 @@ export default class DefaultStateManager implements StateManager {
    * @param address - Address of the account to get the storage for
    * @param key - Key in the account's storage to get the value for. Must be 32 bytes long.
    */
-  async getOriginalContractStorage(address: Buffer, key: Buffer): Promise<Buffer> {
+  async getOriginalContractStorage(address: Address, key: Buffer): Promise<Buffer> {
     if (key.length !== 32) {
       throw new Error('Storage key must be 32 bytes long')
     }
 
-    const addressHex = address.toString('hex')
+    const addressHex = address.buf.toString('hex')
     const keyHex = key.toString('hex')
 
-    let map: Map<string, Buffer>
+    let map: Map<AddressHex, Buffer>
     if (!this._originalStorageCache.has(addressHex)) {
       map = new Map()
       this._originalStorageCache.set(addressHex, map)
     } else {
-      map = this._originalStorageCache.get(addressHex) as Map<string, Buffer>
+      map = this._originalStorageCache.get(addressHex)!
     }
 
     if (map.has(keyHex)) {
@@ -250,15 +257,17 @@ export default class DefaultStateManager implements StateManager {
    * @param modifyTrie - Function to modify the storage trie of the account
    */
   async _modifyContractStorage(
-    address: Buffer,
-    modifyTrie: (storageTrie: Trie, done: Function) => void,
+    address: Address,
+    modifyTrie: (storageTrie: Trie, done: Function) => void
   ): Promise<void> {
+    // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve) => {
       const storageTrie = await this._getStorageTrie(address)
 
       modifyTrie(storageTrie, async () => {
         // update storage cache
-        this._storageTries[address.toString('hex')] = storageTrie
+        const addressHex = address.buf.toString('hex')
+        this._storageTries[addressHex] = storageTrie
 
         // update contract stateRoot
         const contract = this._cache.get(address)
@@ -276,12 +285,18 @@ export default class DefaultStateManager implements StateManager {
    * corresponding to `address` at the provided `key`.
    * @param address -  Address to set a storage value for
    * @param key - Key to set the value at. Must be 32 bytes long.
-   * @param value - Value to set at `key` for account corresponding to `address`
+   * @param value - Value to set at `key` for account corresponding to `address`. Cannot be more than 32 bytes. Leading zeros are stripped. If it is a empty or filled with zeros, deletes the value.
    */
-  async putContractStorage(address: Buffer, key: Buffer, value: Buffer): Promise<void> {
+  async putContractStorage(address: Address, key: Buffer, value: Buffer): Promise<void> {
     if (key.length !== 32) {
       throw new Error('Storage key must be 32 bytes long')
     }
+
+    if (value.length > 32) {
+      throw new Error('Storage value cannot be longer than 32 bytes')
+    }
+
+    value = unpadBuffer(value)
 
     await this._modifyContractStorage(address, async (storageTrie, done) => {
       if (value && value.length) {
@@ -300,7 +315,7 @@ export default class DefaultStateManager implements StateManager {
    * Clears all storage entries for the account corresponding to `address`.
    * @param address -  Address to clear the storage of
    */
-  async clearContractStorage(address: Buffer): Promise<void> {
+  async clearContractStorage(address: Address): Promise<void> {
     await this._modifyContractStorage(address, (storageTrie, done) => {
       storageTrie.root = storageTrie.EMPTY_TRIE_ROOT
       done()
@@ -343,7 +358,7 @@ export default class DefaultStateManager implements StateManager {
    */
   async revert(): Promise<void> {
     // setup trie checkpointing
-    this._trie.revert()
+    await this._trie.revert()
     // setup cache checkpointing
     this._cache.revert()
     this._storageTries = {}
@@ -415,24 +430,29 @@ export default class DefaultStateManager implements StateManager {
   }
 
   /**
-   * Dumps the the storage values for an `account` specified by `address`.
+   * Dumps the RLP-encoded storage values for an `account` specified by `address`.
    * @param address - The address of the `account` to return storage for
    * @returns {Promise<StorageDump>} - The state of the account as an `Object` map.
    * Keys are are the storage keys, values are the storage values as strings.
    * Both are represented as hex strings without the `0x` prefix.
    */
-  async dumpStorage(address: Buffer): Promise<StorageDump> {
-    return new Promise(async (resolve) => {
-      const trie = await this._getStorageTrie(address)
-      const storage: StorageDump = {}
-      const stream = trie.createReadStream()
+  async dumpStorage(address: Address): Promise<StorageDump> {
+    return new Promise((resolve, reject) => {
+      this._getStorageTrie(address)
+        .then((trie) => {
+          const storage: StorageDump = {}
+          const stream = trie.createReadStream()
 
-      stream.on('data', (val: any) => {
-        storage[val.key.toString('hex')] = val.value.toString('hex')
-      })
-      stream.on('end', () => {
-        resolve(storage)
-      })
+          stream.on('data', (val: any) => {
+            storage[val.key.toString('hex')] = val.value.toString('hex')
+          })
+          stream.on('end', () => {
+            resolve(storage)
+          })
+        })
+        .catch((e) => {
+          reject(e)
+        })
     })
   }
 
@@ -474,12 +494,8 @@ export default class DefaultStateManager implements StateManager {
 
     const addresses = Object.keys(initState)
     for (const address of addresses) {
-      const account = new Account()
-      if (initState[address].slice(0, 2) === '0x') {
-        account.balance = new BN(initState[address].slice(2), 16).toArrayLike(Buffer)
-      } else {
-        account.balance = new BN(initState[address]).toArrayLike(Buffer)
-      }
+      const balance = new BN(toBuffer(initState[address]))
+      const account = Account.fromAccountData({ balance })
       const addressBuffer = toBuffer(address)
       await this._trie.put(addressBuffer, account.serialize())
     }
@@ -491,7 +507,7 @@ export default class DefaultStateManager implements StateManager {
    * EIP-161 (https://eips.ethereum.org/EIPS/eip-161).
    * @param address - Address to check
    */
-  async accountIsEmpty(address: Buffer): Promise<boolean> {
+  async accountIsEmpty(address: Address): Promise<boolean> {
     const account = await this.getAccount(address)
     return account.isEmpty()
   }
@@ -501,12 +517,12 @@ export default class DefaultStateManager implements StateManager {
    * exists
    * @param address - Address of the `account` to check
    */
-  async accountExists(address: Buffer): Promise<boolean> {
-    const account = await this._cache.lookup(address)
+  async accountExists(address: Address): Promise<boolean> {
+    const account = this._cache.lookup(address)
     if (account && !this._cache.keyIsDeleted(address)) {
       return true
     }
-    if (await this._cache._trie.get(address)) {
+    if (await this._cache._trie.get(address.buf)) {
       return true
     }
     return false
@@ -520,7 +536,7 @@ export default class DefaultStateManager implements StateManager {
     if (this._common.gteHardfork('spuriousDragon')) {
       const touchedArray = Array.from(this._touched)
       for (const addressHex of touchedArray) {
-        const address = Buffer.from(addressHex, 'hex')
+        const address = new Address(Buffer.from(addressHex, 'hex'))
         const empty = await this.accountIsEmpty(address)
         if (empty) {
           this._cache.del(address)

@@ -15,6 +15,7 @@
 * [checkpoint](_state_interface_.statemanager.md#checkpoint)
 * [cleanupTouchedAccounts](_state_interface_.statemanager.md#cleanuptouchedaccounts)
 * [clearContractStorage](_state_interface_.statemanager.md#clearcontractstorage)
+* [clearOriginalStorageCache](_state_interface_.statemanager.md#clearoriginalstoragecache)
 * [commit](_state_interface_.statemanager.md#commit)
 * [copy](_state_interface_.statemanager.md#copy)
 * [deleteAccount](_state_interface_.statemanager.md#deleteaccount)
@@ -38,7 +39,7 @@
 
 ###  accountExists
 
-▸ **accountExists**(`address`: Buffer): *Promise‹boolean›*
+▸ **accountExists**(`address`: Address): *Promise‹boolean›*
 
 *Defined in [state/interface.ts:32](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L32)*
 
@@ -46,7 +47,7 @@
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 
 **Returns:** *Promise‹boolean›*
 
@@ -54,7 +55,7 @@ ___
 
 ###  accountIsEmpty
 
-▸ **accountIsEmpty**(`address`: Buffer): *Promise‹boolean›*
+▸ **accountIsEmpty**(`address`: Address): *Promise‹boolean›*
 
 *Defined in [state/interface.ts:31](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L31)*
 
@@ -62,7 +63,7 @@ ___
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 
 **Returns:** *Promise‹boolean›*
 
@@ -90,7 +91,7 @@ ___
 
 ###  clearContractStorage
 
-▸ **clearContractStorage**(`address`: Buffer): *Promise‹void›*
+▸ **clearContractStorage**(`address`: Address): *Promise‹void›*
 
 *Defined in [state/interface.ts:21](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L21)*
 
@@ -98,9 +99,19 @@ ___
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 
 **Returns:** *Promise‹void›*
+
+___
+
+###  clearOriginalStorageCache
+
+▸ **clearOriginalStorageCache**(): *void*
+
+*Defined in [state/interface.ts:34](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L34)*
+
+**Returns:** *void*
 
 ___
 
@@ -126,7 +137,7 @@ ___
 
 ###  deleteAccount
 
-▸ **deleteAccount**(`address`: Buffer): *Promise‹void›*
+▸ **deleteAccount**(`address`: Address): *Promise‹void›*
 
 *Defined in [state/interface.ts:14](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L14)*
 
@@ -134,7 +145,7 @@ ___
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 
 **Returns:** *Promise‹void›*
 
@@ -142,7 +153,7 @@ ___
 
 ###  dumpStorage
 
-▸ **dumpStorage**(`address`: Buffer): *Promise‹[StorageDump](_state_interface_.storagedump.md)›*
+▸ **dumpStorage**(`address`: Address): *Promise‹[StorageDump](_state_interface_.storagedump.md)›*
 
 *Defined in [state/interface.ts:27](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L27)*
 
@@ -150,7 +161,7 @@ ___
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 
 **Returns:** *Promise‹[StorageDump](_state_interface_.storagedump.md)›*
 
@@ -184,7 +195,7 @@ ___
 
 ###  getAccount
 
-▸ **getAccount**(`address`: Buffer): *Promise‹Account›*
+▸ **getAccount**(`address`: Address): *Promise‹Account›*
 
 *Defined in [state/interface.ts:12](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L12)*
 
@@ -192,7 +203,7 @@ ___
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 
 **Returns:** *Promise‹Account›*
 
@@ -200,7 +211,7 @@ ___
 
 ###  getContractCode
 
-▸ **getContractCode**(`address`: Buffer): *Promise‹Buffer›*
+▸ **getContractCode**(`address`: Address): *Promise‹Buffer›*
 
 *Defined in [state/interface.ts:17](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L17)*
 
@@ -208,7 +219,7 @@ ___
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 
 **Returns:** *Promise‹Buffer›*
 
@@ -216,7 +227,7 @@ ___
 
 ###  getContractStorage
 
-▸ **getContractStorage**(`address`: Buffer, `key`: Buffer): *Promise‹Buffer›*
+▸ **getContractStorage**(`address`: Address, `key`: Buffer): *Promise‹Buffer›*
 
 *Defined in [state/interface.ts:18](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L18)*
 
@@ -224,7 +235,7 @@ ___
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 `key` | Buffer |
 
 **Returns:** *Promise‹Buffer›*
@@ -233,7 +244,7 @@ ___
 
 ###  getOriginalContractStorage
 
-▸ **getOriginalContractStorage**(`address`: Buffer, `key`: Buffer): *Promise‹Buffer›*
+▸ **getOriginalContractStorage**(`address`: Address, `key`: Buffer): *Promise‹Buffer›*
 
 *Defined in [state/interface.ts:19](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L19)*
 
@@ -241,7 +252,7 @@ ___
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 `key` | Buffer |
 
 **Returns:** *Promise‹Buffer›*
@@ -276,7 +287,7 @@ ___
 
 ###  putAccount
 
-▸ **putAccount**(`address`: Buffer, `account`: Account): *Promise‹void›*
+▸ **putAccount**(`address`: Address, `account`: Account): *Promise‹void›*
 
 *Defined in [state/interface.ts:13](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L13)*
 
@@ -284,7 +295,7 @@ ___
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 `account` | Account |
 
 **Returns:** *Promise‹void›*
@@ -293,7 +304,7 @@ ___
 
 ###  putContractCode
 
-▸ **putContractCode**(`address`: Buffer, `value`: Buffer): *Promise‹void›*
+▸ **putContractCode**(`address`: Address, `value`: Buffer): *Promise‹void›*
 
 *Defined in [state/interface.ts:16](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L16)*
 
@@ -301,7 +312,7 @@ ___
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 `value` | Buffer |
 
 **Returns:** *Promise‹void›*
@@ -310,7 +321,7 @@ ___
 
 ###  putContractStorage
 
-▸ **putContractStorage**(`address`: Buffer, `key`: Buffer, `value`: Buffer): *Promise‹void›*
+▸ **putContractStorage**(`address`: Address, `key`: Buffer, `value`: Buffer): *Promise‹void›*
 
 *Defined in [state/interface.ts:20](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L20)*
 
@@ -318,7 +329,7 @@ ___
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 `key` | Buffer |
 `value` | Buffer |
 
@@ -354,7 +365,7 @@ ___
 
 ###  touchAccount
 
-▸ **touchAccount**(`address`: Buffer): *void*
+▸ **touchAccount**(`address`: Address): *void*
 
 *Defined in [state/interface.ts:15](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/state/interface.ts#L15)*
 
@@ -362,6 +373,6 @@ ___
 
 Name | Type |
 ------ | ------ |
-`address` | Buffer |
+`address` | Address |
 
 **Returns:** *void*

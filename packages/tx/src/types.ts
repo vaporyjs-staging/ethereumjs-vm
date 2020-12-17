@@ -1,4 +1,4 @@
-import { BN, unpadBuffer, Address } from 'ethereumjs-util'
+import { AddressLike, BNLike, BufferLike } from 'ethereumjs-util'
 import Common from '@ethereumjs/common'
 
 /**
@@ -9,8 +9,21 @@ export interface TxOptions {
    * A Common object defining the chain and hardfork for the transaction.
    *
    * Default: `Common` object set to `mainnet` and the default hardfork as defined in the `Common` class.
+   *
+   * Current default hardfork: `istanbul`
    */
   common?: Common
+  /**
+   * A transaction object by default gets frozen along initialization. This gives you
+   * strong additional security guarantees on the consistency of the tx parameters.
+   *
+   * If you need to deactivate the tx freeze - e.g. because you want to subclass tx and
+   * add aditional properties - it is strongly encouraged that you do the freeze yourself
+   * within your code instead.
+   *
+   * Default: true
+   */
+  freeze?: boolean
 }
 
 /**
@@ -76,41 +89,4 @@ export interface JsonTx {
   r?: string
   s?: string
   value?: string
-}
-
-/**
- * Any object that can be transformed into a `Buffer`
- */
-export interface TransformableToBuffer {
-  toBuffer(): Buffer
-}
-
-/**
- * A hex string prefixed with `0x`.
- */
-export type PrefixedHexString = string
-
-/**
- * A Buffer, hex string prefixed with `0x`, Number, or an object with a `toBuffer()` method such as BN.
- */
-export type BufferLike = Buffer | TransformableToBuffer | PrefixedHexString | number
-
-export type AddressLike = Address | Buffer | string
-
-export type BNLike = BN | string | number
-
-/**
- * Convert BN to its RLP representation.
- */
-export function bnToRlp(value: BN | undefined): Buffer {
-  // using bn.js `toArrayLike(Buffer)` instead of `toBuffer()`
-  // for compatibility with browserify and similar tools
-  return value ? unpadBuffer(value.toArrayLike(Buffer)) : Buffer.from([])
-}
-
-/**
- * Convert BN to hex.
- */
-export function bnToHex(value: BN): string {
-  return `0x${value.toString(16)}`
 }

@@ -13,11 +13,13 @@ This was originally the EthereumJS VM repository. On Q1 2020 we brought some of 
 
 | package                                     | npm                                                         | issues                                                                  | tests                                                                  | coverage                                                                |
 | ------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| [@ethereumjs/account][account-package]       | [![NPM Package][account-npm-badge]][account-npm-link]       | [![Account Issues][account-issues-badge]][account-issues-link]          | [![Actions Status][account-actions-badge]][account-actions-link]       | [![Code Coverage][account-coverage-badge]][account-coverage-link]       |
 | [@ethereumjs/block][block-package]           | [![NPM Package][block-npm-badge]][block-npm-link]           | [![Block Issues][block-issues-badge]][block-issues-link]                | [![Actions Status][block-actions-badge]][block-actions-link]           | [![Code Coverage][block-coverage-badge]][block-coverage-link]           |
 | [@ethereumjs/blockchain][blockchain-package] | [![NPM Package][blockchain-npm-badge]][blockchain-npm-link] | [![Blockchain Issues][blockchain-issues-badge]][blockchain-issues-link] | [![Actions Status][blockchain-actions-badge]][blockchain-actions-link] | [![Code Coverage][blockchain-coverage-badge]][blockchain-coverage-link] |
+| [@ethereumjs/client][client-package]           | [![NPM Package][client-npm-badge]][client-npm-link]           | [![Client Issues][client-issues-badge]][client-issues-link]                | [![Actions Status][client-actions-badge]][client-actions-link]           | [![Code Coverage][client-coverage-badge]][client-coverage-link]           |
 | [@ethereumjs/common][common-package]         | [![NPM Package][common-npm-badge]][common-npm-link]         | [![Common Issues][common-issues-badge]][common-issues-link]             | [![Actions Status][common-actions-badge]][common-actions-link]         | [![Code Coverage][common-coverage-badge]][common-coverage-link]         |
+| [@ethereumjs/devp2p][devp2p-package]         | [![NPM Package][devp2p-npm-badge]][devp2p-npm-link]         | [![Devp2p Issues][devp2p-issues-badge]][devp2p-issues-link]             | [![Actions Status][devp2p-actions-badge]][devp2p-actions-link]         | [![Code Coverage][devp2p-coverage-badge]][devp2p-coverage-link] 
 | [@ethereumjs/ethash][ethash-package]         | [![NPM Package][ethash-npm-badge]][ethash-npm-link]         | [![Ethash Issues][ethash-issues-badge]][ethash-issues-link]             | [![Actions Status][ethash-actions-badge]][ethash-actions-link]         | [![Code Coverage][ethash-coverage-badge]][ethash-coverage-link]         |
+| [@ethereumjs/trie][trie-package]                 | [![NPM Package][trie-npm-badge]][trie-npm-link]                 | [![Trie Issues][trie-issues-badge]][trie-issues-link]                         | [![Actions Status][trie-actions-badge]][trie-actions-link]                 | [![Code Coverage][trie-coverage-badge]][trie-coverage-link] 
 | [@ethereumjs/tx][tx-package]                 | [![NPM Package][tx-npm-badge]][tx-npm-link]                 | [![Tx Issues][tx-issues-badge]][tx-issues-link]                         | [![Actions Status][tx-actions-badge]][tx-actions-link]                 | [![Code Coverage][tx-coverage-badge]][tx-coverage-link]                 |
 | [@ethereumjs/vm][vm-package]                 | [![NPM Package][vm-npm-badge]][vm-npm-link]                 | [![VM Issues][vm-issues-badge]][vm-issues-link]                         | [![Actions Status][vm-actions-badge]][vm-actions-link]                 | [![Code Coverage][vm-coverage-badge]][vm-coverage-link]                 |
 
@@ -30,27 +32,34 @@ Detailed version can be seen on [Codecov.io][coverage-link]
 ## Package dependency relationship
 
 <p align="center">
- <img width="409" alt="diagram" src="https://user-images.githubusercontent.com/47108/84323915-b0787980-ab45-11ea-96fd-55a03ba1f3e8.png">
+ <img width="500" alt="diagram" src="https://mermaid.ink/svg/eyJjb2RlIjoiZ3JhcGggVERcbiAgdm17dm19XG4gIGNsaWVudHtjbGllbnR9XG4gIGV0aGFzaCAtLT4gYmxvY2tjaGFpblxuICBkZXZwMnAgLS0-IGNsaWVudFxuICBibG9jayAtLT4gYmxvY2tjaGFpblxuICBibG9jayAtLT4gY2xpZW50XG4gIGJsb2NrIC0tPiB2bVxuICBibG9ja2NoYWluIC0tPiBjbGllbnRcbiAgYmxvY2tjaGFpbiAtLT4gdm1cbiAgdHJpZSAtLT4gY2xpZW50XG4gIHRyaWUgLS0-IHZtXG4gIHRyaWUgLS0-IGJsb2NrXG4gIGNvbW1vbiAtLT4gYmxvY2tcbiAgY29tbW9uIC0tPiBibG9ja2NoYWluXG4gIGNvbW1vbiAtLT4gdHhcbiAgY29tbW9uIC0tPiB2bVxuICBjb21tb24gLS0-IGNsaWVudFxuICBjb21tb24gLS0-IGRldnAycFxuICB0eCAtLT4gYmxvY2tcbiAgdHggLS0-IHZtXG4gIHZtIC0tPiBjbGllbnQiLCJtZXJtYWlkIjp7InRoZW1lIjoiZGVmYXVsdCIsInRoZW1lVmFyaWFibGVzIjp7ImJhY2tncm91bmQiOiJ3aGl0ZSIsInByaW1hcnlDb2xvciI6IiNFQ0VDRkYiLCJzZWNvbmRhcnlDb2xvciI6IiNmZmZmZGUiLCJ0ZXJ0aWFyeUNvbG9yIjoiaHNsKDgwLCAxMDAlLCA5Ni4yNzQ1MDk4MDM5JSkiLCJwcmltYXJ5Qm9yZGVyQ29sb3IiOiJoc2woMjQwLCA2MCUsIDg2LjI3NDUwOTgwMzklKSIsInNlY29uZGFyeUJvcmRlckNvbG9yIjoiaHNsKDYwLCA2MCUsIDgzLjUyOTQxMTc2NDclKSIsInRlcnRpYXJ5Qm9yZGVyQ29sb3IiOiJoc2woODAsIDYwJSwgODYuMjc0NTA5ODAzOSUpIiwicHJpbWFyeVRleHRDb2xvciI6IiMxMzEzMDAiLCJzZWNvbmRhcnlUZXh0Q29sb3IiOiIjMDAwMDIxIiwidGVydGlhcnlUZXh0Q29sb3IiOiJyZ2IoOS41MDAwMDAwMDAxLCA5LjUwMDAwMDAwMDEsIDkuNTAwMDAwMDAwMSkiLCJsaW5lQ29sb3IiOiIjMzMzMzMzIiwidGV4dENvbG9yIjoiIzMzMyIsIm1haW5Ca2ciOiIjRUNFQ0ZGIiwic2Vjb25kQmtnIjoiI2ZmZmZkZSIsImJvcmRlcjEiOiIjOTM3MERCIiwiYm9yZGVyMiI6IiNhYWFhMzMiLCJhcnJvd2hlYWRDb2xvciI6IiMzMzMzMzMiLCJmb250RmFtaWx5IjoiXCJ0cmVidWNoZXQgbXNcIiwgdmVyZGFuYSwgYXJpYWwiLCJmb250U2l6ZSI6IjE2cHgiLCJsYWJlbEJhY2tncm91bmQiOiIjZThlOGU4Iiwibm9kZUJrZyI6IiNFQ0VDRkYiLCJub2RlQm9yZGVyIjoiIzkzNzBEQiIsImNsdXN0ZXJCa2ciOiIjZmZmZmRlIiwiY2x1c3RlckJvcmRlciI6IiNhYWFhMzMiLCJkZWZhdWx0TGlua0NvbG9yIjoiIzMzMzMzMyIsInRpdGxlQ29sb3IiOiIjMzMzIiwiZWRnZUxhYmVsQmFja2dyb3VuZCI6IiNlOGU4ZTgiLCJhY3RvckJvcmRlciI6ImhzbCgyNTkuNjI2MTY4MjI0MywgNTkuNzc2NTM2MzEyOCUsIDg3LjkwMTk2MDc4NDMlKSIsImFjdG9yQmtnIjoiI0VDRUNGRiIsImFjdG9yVGV4dENvbG9yIjoiYmxhY2siLCJhY3RvckxpbmVDb2xvciI6ImdyZXkiLCJzaWduYWxDb2xvciI6IiMzMzMiLCJzaWduYWxUZXh0Q29sb3IiOiIjMzMzIiwibGFiZWxCb3hCa2dDb2xvciI6IiNFQ0VDRkYiLCJsYWJlbEJveEJvcmRlckNvbG9yIjoiaHNsKDI1OS42MjYxNjgyMjQzLCA1OS43NzY1MzYzMTI4JSwgODcuOTAxOTYwNzg0MyUpIiwibGFiZWxUZXh0Q29sb3IiOiJibGFjayIsImxvb3BUZXh0Q29sb3IiOiJibGFjayIsIm5vdGVCb3JkZXJDb2xvciI6IiNhYWFhMzMiLCJub3RlQmtnQ29sb3IiOiIjZmZmNWFkIiwibm90ZVRleHRDb2xvciI6ImJsYWNrIiwiYWN0aXZhdGlvbkJvcmRlckNvbG9yIjoiIzY2NiIsImFjdGl2YXRpb25Ca2dDb2xvciI6IiNmNGY0ZjQiLCJzZXF1ZW5jZU51bWJlckNvbG9yIjoid2hpdGUiLCJzZWN0aW9uQmtnQ29sb3IiOiJyZ2JhKDEwMiwgMTAyLCAyNTUsIDAuNDkpIiwiYWx0U2VjdGlvbkJrZ0NvbG9yIjoid2hpdGUiLCJzZWN0aW9uQmtnQ29sb3IyIjoiI2ZmZjQwMCIsInRhc2tCb3JkZXJDb2xvciI6IiM1MzRmYmMiLCJ0YXNrQmtnQ29sb3IiOiIjOGE5MGRkIiwidGFza1RleHRMaWdodENvbG9yIjoid2hpdGUiLCJ0YXNrVGV4dENvbG9yIjoid2hpdGUiLCJ0YXNrVGV4dERhcmtDb2xvciI6ImJsYWNrIiwidGFza1RleHRPdXRzaWRlQ29sb3IiOiJibGFjayIsInRhc2tUZXh0Q2xpY2thYmxlQ29sb3IiOiIjMDAzMTYzIiwiYWN0aXZlVGFza0JvcmRlckNvbG9yIjoiIzUzNGZiYyIsImFjdGl2ZVRhc2tCa2dDb2xvciI6IiNiZmM3ZmYiLCJncmlkQ29sb3IiOiJsaWdodGdyZXkiLCJkb25lVGFza0JrZ0NvbG9yIjoibGlnaHRncmV5IiwiZG9uZVRhc2tCb3JkZXJDb2xvciI6ImdyZXkiLCJjcml0Qm9yZGVyQ29sb3IiOiIjZmY4ODg4IiwiY3JpdEJrZ0NvbG9yIjoicmVkIiwidG9kYXlMaW5lQ29sb3IiOiJyZWQiLCJsYWJlbENvbG9yIjoiYmxhY2siLCJlcnJvckJrZ0NvbG9yIjoiIzU1MjIyMiIsImVycm9yVGV4dENvbG9yIjoiIzU1MjIyMiIsImNsYXNzVGV4dCI6IiMxMzEzMDAiLCJmaWxsVHlwZTAiOiIjRUNFQ0ZGIiwiZmlsbFR5cGUxIjoiI2ZmZmZkZSIsImZpbGxUeXBlMiI6ImhzbCgzMDQsIDEwMCUsIDk2LjI3NDUwOTgwMzklKSIsImZpbGxUeXBlMyI6ImhzbCgxMjQsIDEwMCUsIDkzLjUyOTQxMTc2NDclKSIsImZpbGxUeXBlNCI6ImhzbCgxNzYsIDEwMCUsIDk2LjI3NDUwOTgwMzklKSIsImZpbGxUeXBlNSI6ImhzbCgtNCwgMTAwJSwgOTMuNTI5NDExNzY0NyUpIiwiZmlsbFR5cGU2IjoiaHNsKDgsIDEwMCUsIDk2LjI3NDUwOTgwMzklKSIsImZpbGxUeXBlNyI6ImhzbCgxODgsIDEwMCUsIDkzLjUyOTQxMTc2NDclKSJ9fSwidXBkYXRlRWRpdG9yIjpmYWxzZX0">
 </p>
 
 <!-- CREATED WITH MERMAID
-https://mermaid-js.github.io/mermaid-live-editor/#/edit/eyJjb2RlIjoiZ3JhcGggVERcbiAgdm17Vk19XG4gIGNvbW1vbiAtLT4gYmxvY2tjaGFpblxuICBjb21tb24gLS0-IGJsb2NrXG4gIGNvbW1vbiAtLT4gdm1cbiAgY29tbW9uIC0tPiB0eFxuICBldGhhc2ggLS0-IGJsb2NrY2hhaW5cbiAgYmxvY2sgLS0-IGJsb2NrY2hhaW5cbiAgYmxvY2tjaGFpbiAtLT4gdm1cbiAgYmxvY2sgLS0-IHZtXG4gIHR4IC0tPiB2bVxuICB0eCAtLT4gYmxvY2tcbiAgYWNjb3VudCAtLT4gdm1cbiAgIiwibWVybWFpZCI6eyJ0aGVtZSI6ImRlZmF1bHQifSwidXBkYXRlRWRpdG9yIjpmYWxzZX0
+https://mermaid-js.github.io/mermaid-live-editor/#/edit/eyJjb2RlIjoiZ3JhcGggVERcbiAgdm17dm19XG4gIGNsaWVudHtjbGllbnR9XG4gIGV0aGFzaCAtLT4gYmxvY2tjaGFpblxuICBkZXZwMnAgLS0-IGNsaWVudFxuICBibG9jayAtLT4gYmxvY2tjaGFpblxuICBibG9jayAtLT4gY2xpZW50XG4gIGJsb2NrIC0tPiB2bVxuICBibG9ja2NoYWluIC0tPiBjbGllbnRcbiAgYmxvY2tjaGFpbiAtLT4gdm1cbiAgdHJpZSAtLT4gY2xpZW50XG4gIHRyaWUgLS0-IHZtXG4gIHRyaWUgLS0-IGJsb2NrXG4gIGNvbW1vbiAtLT4gYmxvY2tcbiAgY29tbW9uIC0tPiBibG9ja2NoYWluXG4gIGNvbW1vbiAtLT4gdHhcbiAgY29tbW9uIC0tPiB2bVxuICBjb21tb24gLS0-IGNsaWVudFxuICBjb21tb24gLS0-IGRldnAycFxuICB0eCAtLT4gYmxvY2tcbiAgdHggLS0-IHZtXG4gIHZtIC0tPiBjbGllbnQiLCJtZXJtYWlkIjp7InRoZW1lIjoiZGVmYXVsdCIsInRoZW1lVmFyaWFibGVzIjp7ImJhY2tncm91bmQiOiJ3aGl0ZSIsInByaW1hcnlDb2xvciI6IiNFQ0VDRkYiLCJzZWNvbmRhcnlDb2xvciI6IiNmZmZmZGUiLCJ0ZXJ0aWFyeUNvbG9yIjoiaHNsKDgwLCAxMDAlLCA5Ni4yNzQ1MDk4MDM5JSkiLCJwcmltYXJ5Qm9yZGVyQ29sb3IiOiJoc2woMjQwLCA2MCUsIDg2LjI3NDUwOTgwMzklKSIsInNlY29uZGFyeUJvcmRlckNvbG9yIjoiaHNsKDYwLCA2MCUsIDgzLjUyOTQxMTc2NDclKSIsInRlcnRpYXJ5Qm9yZGVyQ29sb3IiOiJoc2woODAsIDYwJSwgODYuMjc0NTA5ODAzOSUpIiwicHJpbWFyeVRleHRDb2xvciI6IiMxMzEzMDAiLCJzZWNvbmRhcnlUZXh0Q29sb3IiOiIjMDAwMDIxIiwidGVydGlhcnlUZXh0Q29sb3IiOiJyZ2IoOS41MDAwMDAwMDAxLCA5LjUwMDAwMDAwMDEsIDkuNTAwMDAwMDAwMSkiLCJsaW5lQ29sb3IiOiIjMzMzMzMzIiwidGV4dENvbG9yIjoiIzMzMyIsIm1haW5Ca2ciOiIjRUNFQ0ZGIiwic2Vjb25kQmtnIjoiI2ZmZmZkZSIsImJvcmRlcjEiOiIjOTM3MERCIiwiYm9yZGVyMiI6IiNhYWFhMzMiLCJhcnJvd2hlYWRDb2xvciI6IiMzMzMzMzMiLCJmb250RmFtaWx5IjoiXCJ0cmVidWNoZXQgbXNcIiwgdmVyZGFuYSwgYXJpYWwiLCJmb250U2l6ZSI6IjE2cHgiLCJsYWJlbEJhY2tncm91bmQiOiIjZThlOGU4Iiwibm9kZUJrZyI6IiNFQ0VDRkYiLCJub2RlQm9yZGVyIjoiIzkzNzBEQiIsImNsdXN0ZXJCa2ciOiIjZmZmZmRlIiwiY2x1c3RlckJvcmRlciI6IiNhYWFhMzMiLCJkZWZhdWx0TGlua0NvbG9yIjoiIzMzMzMzMyIsInRpdGxlQ29sb3IiOiIjMzMzIiwiZWRnZUxhYmVsQmFja2dyb3VuZCI6IiNlOGU4ZTgiLCJhY3RvckJvcmRlciI6ImhzbCgyNTkuNjI2MTY4MjI0MywgNTkuNzc2NTM2MzEyOCUsIDg3LjkwMTk2MDc4NDMlKSIsImFjdG9yQmtnIjoiI0VDRUNGRiIsImFjdG9yVGV4dENvbG9yIjoiYmxhY2siLCJhY3RvckxpbmVDb2xvciI6ImdyZXkiLCJzaWduYWxDb2xvciI6IiMzMzMiLCJzaWduYWxUZXh0Q29sb3IiOiIjMzMzIiwibGFiZWxCb3hCa2dDb2xvciI6IiNFQ0VDRkYiLCJsYWJlbEJveEJvcmRlckNvbG9yIjoiaHNsKDI1OS42MjYxNjgyMjQzLCA1OS43NzY1MzYzMTI4JSwgODcuOTAxOTYwNzg0MyUpIiwibGFiZWxUZXh0Q29sb3IiOiJibGFjayIsImxvb3BUZXh0Q29sb3IiOiJibGFjayIsIm5vdGVCb3JkZXJDb2xvciI6IiNhYWFhMzMiLCJub3RlQmtnQ29sb3IiOiIjZmZmNWFkIiwibm90ZVRleHRDb2xvciI6ImJsYWNrIiwiYWN0aXZhdGlvbkJvcmRlckNvbG9yIjoiIzY2NiIsImFjdGl2YXRpb25Ca2dDb2xvciI6IiNmNGY0ZjQiLCJzZXF1ZW5jZU51bWJlckNvbG9yIjoid2hpdGUiLCJzZWN0aW9uQmtnQ29sb3IiOiJyZ2JhKDEwMiwgMTAyLCAyNTUsIDAuNDkpIiwiYWx0U2VjdGlvbkJrZ0NvbG9yIjoid2hpdGUiLCJzZWN0aW9uQmtnQ29sb3IyIjoiI2ZmZjQwMCIsInRhc2tCb3JkZXJDb2xvciI6IiM1MzRmYmMiLCJ0YXNrQmtnQ29sb3IiOiIjOGE5MGRkIiwidGFza1RleHRMaWdodENvbG9yIjoid2hpdGUiLCJ0YXNrVGV4dENvbG9yIjoid2hpdGUiLCJ0YXNrVGV4dERhcmtDb2xvciI6ImJsYWNrIiwidGFza1RleHRPdXRzaWRlQ29sb3IiOiJibGFjayIsInRhc2tUZXh0Q2xpY2thYmxlQ29sb3IiOiIjMDAzMTYzIiwiYWN0aXZlVGFza0JvcmRlckNvbG9yIjoiIzUzNGZiYyIsImFjdGl2ZVRhc2tCa2dDb2xvciI6IiNiZmM3ZmYiLCJncmlkQ29sb3IiOiJsaWdodGdyZXkiLCJkb25lVGFza0JrZ0NvbG9yIjoibGlnaHRncmV5IiwiZG9uZVRhc2tCb3JkZXJDb2xvciI6ImdyZXkiLCJjcml0Qm9yZGVyQ29sb3IiOiIjZmY4ODg4IiwiY3JpdEJrZ0NvbG9yIjoicmVkIiwidG9kYXlMaW5lQ29sb3IiOiJyZWQiLCJsYWJlbENvbG9yIjoiYmxhY2siLCJlcnJvckJrZ0NvbG9yIjoiIzU1MjIyMiIsImVycm9yVGV4dENvbG9yIjoiIzU1MjIyMiIsImNsYXNzVGV4dCI6IiMxMzEzMDAiLCJmaWxsVHlwZTAiOiIjRUNFQ0ZGIiwiZmlsbFR5cGUxIjoiI2ZmZmZkZSIsImZpbGxUeXBlMiI6ImhzbCgzMDQsIDEwMCUsIDk2LjI3NDUwOTgwMzklKSIsImZpbGxUeXBlMyI6ImhzbCgxMjQsIDEwMCUsIDkzLjUyOTQxMTc2NDclKSIsImZpbGxUeXBlNCI6ImhzbCgxNzYsIDEwMCUsIDk2LjI3NDUwOTgwMzklKSIsImZpbGxUeXBlNSI6ImhzbCgtNCwgMTAwJSwgOTMuNTI5NDExNzY0NyUpIiwiZmlsbFR5cGU2IjoiaHNsKDgsIDEwMCUsIDk2LjI3NDUwOTgwMzklKSIsImZpbGxUeXBlNyI6ImhzbCgxODgsIDEwMCUsIDkzLjUyOTQxMTc2NDclKSJ9fSwidXBkYXRlRWRpdG9yIjpmYWxzZX0
 -->
 
 ## Development quick start
+
+First, make sure you have the `ethereum-tests` git submodule, by running: 
+
+```sh
+git submodule init
+git submodule update
+```
 
 This monorepo uses [Lerna](https://lerna.js.org/). It links the local packages together, making development a lot easier.
 
 TLDR: Setup
 ```sh
 npm install
-npm build
+npm run build
 ```
 
 TLDR: To update dependencies and (re-)link packages
 ```sh
 npm run bootstrap
-npm build
+npm run build
 ```
 
 Above is the quickest way to set you up. Going down the road, there are two sets of commands: *project* and *package-specific* commands. You can find them at `./package.json` and `./packages/*/package.json`, respectively. Here's a breakdown:
@@ -66,13 +75,25 @@ Installs dependencies for all sub-packages, and links them to create an integrat
 
 #### `npm run build`
 
-Produces `dist` files for all sub-packages. This command can be scoped.
+Builds all monorepo packages by default. If a scope is provided, it will only build that particular package.
+
+Scoped example, that will only build the VM package: 
+  npm run build -- --scope @ethereumjs/vm
+
 
 #### `npm run build:tree -- --scope @ethereumjs/blockchain`
 
-Builds all local packages that the provided package (eg: @ethereumjs/blockchain) depends on, and itself. This unusual syntax just means: pass whatever arguments are after `--` to the underlying script. 
+Builds all local packages that the provided package depends on (e.g.: @ethereumjs/blockchain), and builds itself. 
 
 If no scope is provided, `npm run build:tree`, will build all sub-packages.
+
+#### `npm run clean`
+
+Removes root and packages `node_modules` directories, and other generated files, like `coverage`, `dist` and others. This is useful to run after changing branches, to have a clean slate to work with.
+
+#### `npm run lint` and `npm run lint:fix`
+
+These scripts execute `lint` and `lint:fix` respectively, to all monorepo packages. Worth noting that there is a git hook in place that runs `npm run lint` for every `git push`. This check can be skipped using `git push [command] --no-verify`.
 
 ### Package scripts — run from `./packages/<name>`
 
@@ -82,15 +103,15 @@ There's a set of rather standardized commands you will find in each package of t
 
 #### `npm run build`
 
-Uses TypeScript compiler to build files from `src` or `lib`. Files can be found at `packages/<name>/dist`.
+Uses TypeScript compiler to build source files. The resulting files can be found at `packages/<name>/dist`.
 
 #### `npm run coverage`
 
-Runs whatever is on `npm run test` script, capturing coverage information. By the end, it displays a coverage table. Additional reports can be found at `packages/<name>/coverage`.
+Runs whatever is on `npm run test` script, capturing testing coverage information. By the end, it displays a coverage table. Additional reports can be found at `packages/<name>/coverage/`.
 
 #### `npm run docs:build`
 
-Generates package documentation and outputs it to `./packages/<name>/docs`.
+Generates package documentation and saves them to `./packages/<name>/docs`.
 
 #### `npm run lint`
 
@@ -98,15 +119,13 @@ Checks code style according to the rules defined in [ethereumjs-config](https://
 
 #### `npm run lint:fix`
 
-Fixes code style according to the rules.
+Fixes code style according to the rules. Differently from `npm run lint`, this command actually writes to files.
 
 #### `npm run test`
 
-Runs all package tests. Note that the VM has several test scopes - refer to [packages/vm/package.json](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/package.json) for more info.
+Runs the package tests. 
 
-#### `npm run clean`
-
-Removes root and package `node_modules` directories. Useful to run before `npm i` for a fresh install.
+_Note that the VM has several test scopes - refer to [packages/vm/package.json](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/package.json) for more info._
 
 ### Going further
 
@@ -119,6 +138,38 @@ As this project is powered by Lerna, you can install it globally to enjoy lots m
 #### Cleaning `node_modules`
 
 Hoisting is enabled so dependencies are moved to the root `node_modules`. `lerna clean` [does not remove the root `node_modules`](https://github.com/lerna/lerna/issues/1304) so for convenience you can use the project script `npm run clean`.
+
+### Testing packages locally on other projects
+
+There are some ways you can link this repository packages to other projects before publishing. You can symlink dependencies with [`npm link <package>`](https://docs.npmjs.com/cli/link), or install packages from the filesystem using [`npm install <folder>`](https://docs.npmjs.com/cli/install). But they are subject to some externalities and most importantly with how your package manager handles the lifecycle of packages during installs. 
+
+_Note: Git references do not work with monorepo setups out of the box due to the lack of directory traversal on the syntax. E.g.:_
+
+  npm install git@github.com:ethereumjs/ethereumjs-vm.git
+
+_One way to fetch packages remotely from GitHub before publishing is using [gitpkg.now.sh](https://gitpkg.now.sh/)._
+
+But there's a cleaner way to manage your dependencies using Verdaccio. 
+
+#### Install Verdaccio
+
+Verdaccio is an npm registry and proxy that can be of great help to test packages locally. Check out their [Getting Started guide](https://github.com/verdaccio/verdaccio#get-started).
+
+#### Installs, hoists dependencies and builds packages
+npm install
+
+#### Publish monorepo packages to Verdaccio
+lerna exec "npm publish --registry http://localhost:4873 --ignore-scripts"
+
+#### Unpublish all monorepo packages from Verdaccio
+lerna exec "npm unpublish \$LERNA_PACKAGE_NAME --registry http://localhost:4873 --force"
+
+#### Setup @ethereumjs scope to local Verdaccio server
+  npm config set @ethereumjs:registry http://localhost:4873
+
+#### Teardown @ethereumjs scope to local Verdaccio server
+  npm config delete @ethereumjs:registry
+
 
 # EthereumJS
 
@@ -133,18 +184,9 @@ If you want to join for work or do improvements on the libraries have a look at 
 [coverage-badge]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/branch/master/graph/badge.svg
 [coverage-link]: https://codecov.io/gh/ethereumjs/ethereumjs-vm
 [discord-badge]: https://img.shields.io/static/v1?logo=discord&label=discord&message=Join&color=blue
-[discord-link]: https://discord.gg/TNwARpR[![StackExchange][stackexchange-badge]][stackexchange-link]
+[discord-link]: https://discord.gg/TNwARpR
 [stackexchange-badge]: https://img.shields.io/badge/ethereumjs-stackexchange-brightgreen
 [stackexchange-link]: https://ethereum.stackexchange.com/questions/tagged/ethereumjs
-[account-package]: ./packages/account
-[account-npm-badge]: https://img.shields.io/npm/v/@ethereumjs/account.svg
-[account-npm-link]: https://www.npmjs.com/package/@ethereumjs/account
-[account-issues-badge]: https://img.shields.io/github/issues/ethereumjs/ethereumjs-vm/package:%20account?label=issues
-[account-issues-link]: https://github.com/ethereumjs/ethereumjs-vm/issues?q=is%3Aopen+is%3Aissue+label%3A"package%3A+account"
-[account-actions-badge]: https://github.com/ethereumjs/ethereumjs-vm/workflows/Account/badge.svg
-[account-actions-link]: https://github.com/ethereumjs/ethereumjs-vm/actions?query=workflow%3A%22Account%22
-[account-coverage-badge]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/branch/master/graph/badge.svg?flag=account
-[account-coverage-link]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/tree/master/packages/account
 [block-package]: ./packages/block
 [block-npm-badge]: https://img.shields.io/npm/v/@ethereumjs/block.svg
 [block-npm-link]: https://www.npmjs.com/package/@ethereumjs/block
@@ -163,6 +205,15 @@ If you want to join for work or do improvements on the libraries have a look at 
 [blockchain-actions-link]: https://github.com/ethereumjs/ethereumjs-vm/actions?query=workflow%3A%22Blockchain%22
 [blockchain-coverage-badge]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/branch/master/graph/badge.svg?flag=blockchain
 [blockchain-coverage-link]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/tree/master/packages/blockchain
+[client-package]: ./packages/client
+[client-npm-badge]: https://img.shields.io/npm/v/@ethereumjs/client.svg
+[client-npm-link]: https://www.npmjs.com/package/@ethereumjs/client
+[client-issues-badge]: https://img.shields.io/github/issues/ethereumjs/ethereumjs-vm/package:%20client?label=issues
+[client-issues-link]: https://github.com/ethereumjs/ethereumjs-vm/issues?q=is%3Aopen+is%3Aissue+label%3A"package%3A+client"
+[client-actions-badge]: https://github.com/ethereumjs/ethereumjs-vm/workflows/Client/badge.svg
+[client-actions-link]: https://github.com/ethereumjs/ethereumjs-vm/actions?query=workflow%3A%22Client%22
+[client-coverage-badge]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/branch/master/graph/badge.svg?flag=client
+[client-coverage-link]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/tree/master/packages/client
 [common-package]: ./packages/common
 [common-npm-badge]: https://img.shields.io/npm/v/@ethereumjs/common.svg
 [common-npm-link]: https://www.npmjs.com/package/@ethereumjs/common
@@ -172,6 +223,15 @@ If you want to join for work or do improvements on the libraries have a look at 
 [common-actions-link]: https://github.com/ethereumjs/ethereumjs-vm/actions?query=workflow%3A%22Common%22
 [common-coverage-badge]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/branch/master/graph/badge.svg?flag=common
 [common-coverage-link]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/tree/master/packages/common
+[devp2p-package]: ./packages/devp2p
+[devp2p-npm-badge]: https://img.shields.io/npm/v/@ethereumjs/devp2p.svg
+[devp2p-npm-link]: https://www.npmjs.com/package/@ethereumjs/devp2p
+[devp2p-issues-badge]: https://img.shields.io/github/issues/ethereumjs/ethereumjs-vm/package:%20devp2p?label=issues
+[devp2p-issues-link]: https://github.com/ethereumjs/ethereumjs-vm/issues?q=is%3Aopen+is%3Aissue+label%3A"package%3A+devp2p"
+[devp2p-actions-badge]: https://github.com/ethereumjs/ethereumjs-vm/workflows/Devp2p/badge.svg
+[devp2p-actions-link]: https://github.com/ethereumjs/ethereumjs-vm/actions?query=workflow%3A%22Devp2p%22
+[devp2p-coverage-badge]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/branch/master/graph/badge.svg?flag=devp2p
+[devp2p-coverage-link]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/tree/master/packages/devp2p
 [ethash-package]: ./packages/ethash
 [ethash-npm-badge]: https://img.shields.io/npm/v/@ethereumjs/ethash.svg
 [ethash-npm-link]: https://www.npmjs.org/package/@ethereumjs/ethash
@@ -190,6 +250,15 @@ If you want to join for work or do improvements on the libraries have a look at 
 [tx-actions-link]: https://github.com/ethereumjs/ethereumjs-vm/actions?query=workflow%3A%22Tx%22
 [tx-coverage-badge]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/branch/master/graph/badge.svg?flag=tx
 [tx-coverage-link]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/tree/master/packages/tx
+[trie-package]: ./packages/trie
+[trie-npm-badge]: https://img.shields.io/npm/v/@ethereumjs/trie.svg
+[trie-npm-link]: https://www.npmjs.com/package/@ethereumjs/trie
+[trie-issues-badge]: https://img.shields.io/github/issues/ethereumjs/ethereumjs-vm/package:%20trie?label=issues
+[trie-issues-link]: https://github.com/ethereumjs/ethereumjs-vm/issues?q=is%3Aopen+is%3Aissue+label%3A"package%3A+trie"
+[trie-actions-badge]: https://github.com/ethereumjs/ethereumjs-vm/workflows/Trie/badge.svg
+[trie-actions-link]: https://github.com/ethereumjs/ethereumjs-vm/actions?query=workflow%3A%22Trie%22
+[trie-coverage-badge]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/branch/master/graph/badge.svg?flag=trie
+[trie-coverage-link]: https://codecov.io/gh/ethereumjs/ethereumjs-vm/tree/master/packages/trie
 [vm-package]: ./packages/vm
 [vm-npm-badge]: https://img.shields.io/npm/v/@ethereumjs/vm.svg
 [vm-npm-link]: https://www.npmjs.com/package/@ethereumjs/vm

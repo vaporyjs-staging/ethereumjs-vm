@@ -5,13 +5,14 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "dist.browser"
   ],
+  "browser": "dist.browser/index.js",
   "scripts": {
-    "build": "ethereumjs-config-build",
-    "prepublishOnly": "npm run test && npm run build",
-    "format": "ethereumjs-config-format",
-    "format:fix": "ethereumjs-config-format-fix",
+    "build": "ethereumjs-config-ts-build",
+    "tsc": "ethereumjs-config-tsc",
+    "prepublishOnly": "npm run build && npm run test",
     "lint": "ethereumjs-config-lint",
     "lint:fix": "ethereumjs-config-lint-fix",
     "coverage": "ethereumjs-config-coverage",
@@ -29,22 +30,25 @@
   "author": "mjbecze <mjbecze@gmail.com>",
   "license": "MPL-2.0",
   "bugs": {
-    "url": "https://github.com/ethereumjs/ethereumjs-vm/issues?q=is%3Aissue+is%3Aopen+label%3A'package%3A+ethash'"
+    "url": "https://github.com/ethereumjs/ethereumjs-vm/issues?q=is%3Aissue+label%3A%22package%3A+ethash%22"
   },
   "homepage": "https://github.com/ethereumjs/ethereumjs-vm/tree/master/packages/ethash#readme",
   "dependencies": {
     "@types/levelup": "^4.3.0",
     "buffer-xor": "^2.0.1",
-    "ethereumjs-util": "^7.0.5",
+    "ethereumjs-util": "^7.0.7",
     "miller-rabin": "^4.0.0"
   },
   "devDependencies": {
     "@ethereumjs/block": "^3.0.0",
-    "@ethereumjs/config-nyc": "^1.1.1",
-    "@ethereumjs/config-prettier": "^1.1.1",
-    "@ethereumjs/config-tsc": "^1.1.1",
-    "@ethereumjs/config-tslint": "^1.1.1",
+    "@ethereumjs/config-coverage": "^2.0.0",
+    "@ethereumjs/config-typescript": "^2.0.0",
+    "@ethereumjs/eslint-config-defaults": "^2.0.0",
     "@types/tape": "^4.13.0",
+    "@typescript-eslint/eslint-plugin": "^4.1.1",
+    "eslint": "^6.8.0",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-implicit-dependencies": "^1.0.4",
     "level-mem": "^5.0.1",
     "nyc": "^14.0.0",
     "prettier": "^2.0.5",

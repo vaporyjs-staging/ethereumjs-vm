@@ -21,9 +21,9 @@ Options for the `runTx` method.
 
 ### `Optional` block
 
-• **block**? : *any*
+• **block**? : *Block*
 
-*Defined in [runTx.ts:19](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runTx.ts#L19)*
+*Defined in [runTx.ts:17](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runTx.ts#L17)*
 
 The block to which the `tx` belongs
 
@@ -33,7 +33,7 @@ ___
 
 • **skipBalance**? : *undefined | false | true*
 
-*Defined in [runTx.ts:31](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runTx.ts#L31)*
+*Defined in [runTx.ts:29](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runTx.ts#L29)*
 
 If true, skips the balance check
 
@@ -43,7 +43,7 @@ ___
 
 • **skipNonce**? : *undefined | false | true*
 
-*Defined in [runTx.ts:27](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runTx.ts#L27)*
+*Defined in [runTx.ts:25](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runTx.ts#L25)*
 
 If true, skips the nonce check
 
@@ -53,6 +53,6 @@ ___
 
 • **tx**: *Transaction*
 
-*Defined in [runTx.ts:23](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runTx.ts#L23)*
+*Defined in [runTx.ts:21](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runTx.ts#L21)*
 
-A [`Transaction`](https://github.com/ethereum/ethereumjs-tx) to run
+An [`@ethereumjs/tx`](https://github.com/ethereumjs/ethereumjs-vm/tree/master/packages/tx) to run

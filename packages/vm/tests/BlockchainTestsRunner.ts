@@ -1,9 +1,10 @@
 import * as tape from 'tape'
-import { addHexPrefix, bufferToInt, toBuffer } from 'ethereumjs-util'
-import { SecureTrie as Trie } from 'merkle-patricia-tree'
+import { addHexPrefix, BN, toBuffer } from 'ethereumjs-util'
+import { SecureTrie as Trie } from '@ethereumjs/trie'
 import { Block } from '@ethereumjs/block'
 import Blockchain from '@ethereumjs/blockchain'
 import { setupPreConditions, verifyPostConditions } from './util'
+import Common from '@ethereumjs/common'
 
 const level = require('level')
 const levelMem = require('level-mem')
@@ -11,7 +12,7 @@ const levelMem = require('level-mem')
 export default async function runBlockchainTest(options: any, testData: any, t: tape.Test) {
   // ensure that the test data is the right fork data
   if (testData.network != options.forkConfigTestSuite) {
-    t.comment('skipping test: no data available for ' + options.forkConfigTestSuite)
+    t.comment('skipping test: no data available for ' + <string>options.forkConfigTestSuite)
     return
   }
 
@@ -23,34 +24,40 @@ export default async function runBlockchainTest(options: any, testData: any, t: 
   const blockchainDB = levelMem()
   const cacheDB = level('./.cachedb')
   const state = new Trie()
-  const hardfork = options.forkConfigVM
+
+  const { common }: { common: Common } = options
+  common.setHardforkByBlockNumber(0)
 
   let validatePow = false
   // Only run with block validation when sealEngine present in test file
   // and being set to Ethash PoW validation
   if (testData.sealEngine && testData.sealEngine === 'Ethash') {
+    if (common.consensusType() !== 'ethash') {
+      t.skip('SealEngine setting is not matching chain consensus type, skip test.')
+    }
     validatePow = true
   }
 
-  let eips = []
-  if (hardfork == 'berlin') {
-    // currently, the BLS tests run on the Berlin network, but our VM does not activate EIP2537
-    // if you run the Berlin HF
-    eips = [2537]
-  }
+  // create and add genesis block
+  const header = formatBlockHeader(testData.genesisBlockHeader)
+  const blockData = { header }
+  const genesisBlock = Block.fromBlockData(blockData, { common })
 
-  const { common } = options
-  common.setHardforkByBlockNumber(0)
+  if (testData.genesisRLP) {
+    const rlp = toBuffer(testData.genesisRLP)
+    t.ok(genesisBlock.serialize().equals(rlp), 'correct genesis RLP')
+  }
 
   const blockchain = new Blockchain({
     db: blockchainDB,
     common,
     validateBlocks: true,
-    validatePow,
+    validateConsensus: validatePow,
+    genesisBlock,
   })
 
   if (validatePow) {
-    ;(blockchain.ethash as any).cacheDB = cacheDB
+    blockchain._ethash!.cacheDB = cacheDB
   }
 
   let VM
@@ -66,21 +73,10 @@ export default async function runBlockchainTest(options: any, testData: any, t: 
     common,
   })
 
-  // create and add genesis block
-  const blockData = { header: formatBlockHeader(testData.genesisBlockHeader) }
-  const genesisBlock = new Block(blockData, { common })
-
   // set up pre-state
   await setupPreConditions(vm.stateManager._trie, testData)
 
   t.ok(vm.stateManager._trie.root.equals(genesisBlock.header.stateRoot), 'correct pre stateRoot')
-
-  if (testData.genesisRLP) {
-    const rlp = toBuffer(testData.genesisRLP)
-    t.ok(genesisBlock.serialize().equals(rlp), 'correct genesis RLP')
-  }
-
-  await blockchain.putGenesis(genesisBlock)
 
   async function handleError(error: string | undefined, expectException: string) {
     if (expectException) {
@@ -92,10 +88,8 @@ export default async function runBlockchainTest(options: any, testData: any, t: 
   }
 
   let currentFork = common.hardfork()
-  let currentBlock = 0
-  let lastBlock = 0
+  let currentBlock = new BN(0)
   for (const raw of testData.blocks) {
-    lastBlock = currentBlock
     const paramFork = `expectException${options.forkConfigTestSuite}`
     // Two naming conventions in ethereum/tests to indicate "exception occurs on all HFs" semantics
     // Last checked: ethereumjs-testing v1.3.1 (2020-05-11)
@@ -108,31 +102,24 @@ export default async function runBlockchainTest(options: any, testData: any, t: 
     // here we convert the rlp to block only to extract the number
     // we have to do this again later because the common might run on a new hardfork
     try {
-      const block = new Block(Buffer.from(raw.rlp.slice(2), 'hex'), {
-        common,
-      })
-      currentBlock = bufferToInt(block.header.number)
+      const blockRlp = Buffer.from(raw.rlp.slice(2), 'hex')
+      const block = Block.fromRLPSerializedBlock(blockRlp, { common })
+      currentBlock = block.header.number
     } catch (e) {
-      handleError(e, expectException)
+      await handleError(e, expectException)
       continue
-    }
-
-    if (currentBlock < lastBlock) {
-      // "re-org": rollback the blockchain to currentBlock (i.e. delete that block number in the blockchain plus the children)
-      t.fail('re-orgs are not supported by the test suite')
-      return
     }
 
     try {
       // check if we should update common.
-      let newFork = common.setHardforkByBlockNumber(currentBlock)
+      const newFork = common.setHardforkByBlockNumber(currentBlock.toNumber())
       if (newFork != currentFork) {
         currentFork = newFork
         vm._updateOpcodes()
       }
 
-      const blockData = Buffer.from(raw.rlp.slice(2), 'hex')
-      const block = new Block(blockData, { common })
+      const blockRlp = Buffer.from(raw.rlp.slice(2), 'hex')
+      const block = Block.fromRLPSerializedBlock(blockRlp, { common })
       await blockchain.putBlock(block)
 
       // This is a trick to avoid generating the canonical genesis
@@ -160,19 +147,19 @@ export default async function runBlockchainTest(options: any, testData: any, t: 
       await cacheDB.close()
 
       if (expectException) {
-        t.fail('expected exception but test did not throw an exception: ' + expectException)
+        t.fail('expected exception but test did not throw an exception: ' + <string>expectException)
         return
       }
     } catch (error) {
       // caught an error, reduce block number
-      currentBlock--
+      currentBlock.isubn(1)
       await handleError(error, expectException)
     }
   }
   t.equal(
     (blockchain.meta as any).rawHead.toString('hex'),
     testData.lastblockhash,
-    'correct last header block',
+    'correct last header block'
   )
   await cacheDB.close()
 }

@@ -1,9 +1,34 @@
-import BN = require('bn.js')
-import { keccak256, setLengthRight, setLengthLeft } from 'ethereumjs-util'
+import { Address, BN, keccak256, setLengthRight, setLengthLeft } from 'ethereumjs-util'
 import { ERROR, VmError } from './../../exceptions'
 import { RunState } from './../interpreter'
+import { adjustSstoreGasEIP2929 } from './EIP2929'
 
 const MASK_160 = new BN(1).shln(160).subn(1)
+
+/**
+ * Proxy function for ethereumjs-util's setLengthLeft, except it returns a zero
+ *
+ * length buffer in case the buffer is full of zeros.
+ * @param {Buffer} value Buffer which we want to pad
+ */
+export function setLengthLeftStorage(value: Buffer) {
+  if (value.equals(Buffer.alloc(value.length, 0))) {
+    // return the empty buffer (the value is zero)
+    return Buffer.alloc(0)
+  } else {
+    return setLengthLeft(value, 32)
+  }
+}
+
+/**
+ * Wraps error message as VMError
+ *
+ * @param {string} err
+ */
+export function trap(err: string) {
+  // TODO: facilitate extra data along with errors
+  throw new VmError(err as ERROR)
+}
 
 /**
  * Converts BN address (they're stored like this on the stack) to buffer address
@@ -11,7 +36,8 @@ const MASK_160 = new BN(1).shln(160).subn(1)
  * @param  {BN}     address
  * @return {Buffer}
  */
-export function addressToBuffer(address: BN): Buffer {
+export function addressToBuffer(address: BN | Buffer) {
+  if (Buffer.isBuffer(address)) return address
   return address.and(MASK_160).toArrayLike(Buffer, 'be', 20)
 }
 
@@ -23,9 +49,9 @@ export function addressToBuffer(address: BN): Buffer {
  */
 export function describeLocation(runState: RunState): string {
   const hash = keccak256(runState.eei.getCode()).toString('hex')
-  const address = runState.eei.getAddress().toString('hex')
+  const address = runState.eei.getAddress().buf.toString('hex')
   const pc = runState.programCounter - 1
-  return hash + '/' + address + ':' + pc
+  return `${hash}/${address}:${pc}`
 }
 
 /**
@@ -56,8 +82,8 @@ export function divCeil(a: BN, b: BN): BN {
  */
 export async function getContractStorage(
   runState: RunState,
-  address: Buffer,
-  key: Buffer,
+  address: Address,
+  key: Buffer
 ): Promise<any> {
   const current = setLengthLeftStorage(await runState.stateManager.getContractStorage(address, key))
   if (
@@ -65,7 +91,7 @@ export async function getContractStorage(
     runState._common.gteHardfork('istanbul')
   ) {
     const original = setLengthLeftStorage(
-      await runState.stateManager.getOriginalContractStorage(address, key),
+      await runState.stateManager.getOriginalContractStorage(address, key)
     )
     return { current, original }
   } else {
@@ -83,7 +109,7 @@ export async function getContractStorage(
  * @returns {Buffer}
  */
 export function getDataSlice(data: Buffer, offset: BN, length: BN): Buffer {
-  let len = new BN(data.length)
+  const len = new BN(data.length)
   if (offset.gt(len)) {
     offset = len
   }
@@ -166,21 +192,6 @@ export function maxCallGas(gasLimit: BN, gasLeft: BN, runState: RunState): BN {
 }
 
 /**
- * Proxy function for ethereumjs-util's setLengthLeft, except it returns a zero
- *
- * length buffer in case the buffer is full of zeros.
- * @param {Buffer} value Buffer which we want to pad
- */
-export function setLengthLeftStorage(value: Buffer) {
-  if (value.equals(Buffer.alloc(value.length, 0))) {
-    // return the empty buffer (the value is zero)
-    return Buffer.alloc(0)
-  } else {
-    return setLengthLeft(value, 32)
-  }
-}
-
-/**
  * Subtracts the amount needed for memory usage from `runState.gasLeft`
  *
  * @method subMemUsage
@@ -210,147 +221,6 @@ export function subMemUsage(runState: RunState, offset: BN, length: BN) {
 }
 
 /**
- * Adjusts gas usage and refunds of SStore ops per EIP-2200
- *
- * @param {RunState} runState
- * @param {any}      found
- * @param {Buffer}   value
- */
-export function updateSstoreGas(runState: RunState, found: any, value: Buffer) {
-  if (runState._common.hardfork() === 'constantinople') {
-    const original = found.original
-    const current = found.current
-    if (current.equals(value)) {
-      // If current value equals new value (this is a no-op), 200 gas is deducted.
-      runState.eei.useGas(new BN(runState._common.param('gasPrices', 'netSstoreNoopGas')))
-      return
-    }
-    // If current value does not equal new value
-    if (original.equals(current)) {
-      // If original value equals current value (this storage slot has not been changed by the current execution context)
-      if (original.length === 0) {
-        // If original value is 0, 20000 gas is deducted.
-        return runState.eei.useGas(new BN(runState._common.param('gasPrices', 'netSstoreInitGas')))
-      }
-      if (value.length === 0) {
-        // If new value is 0, add 15000 gas to refund counter.
-        runState.eei.refundGas(new BN(runState._common.param('gasPrices', 'netSstoreClearRefund')))
-      }
-      // Otherwise, 5000 gas is deducted.
-      return runState.eei.useGas(new BN(runState._common.param('gasPrices', 'netSstoreCleanGas')))
-    }
-    // If original value does not equal current value (this storage slot is dirty), 200 gas is deducted. Apply both of the following clauses.
-    if (original.length !== 0) {
-      // If original value is not 0
-      if (current.length === 0) {
-        // If current value is 0 (also means that new value is not 0), remove 15000 gas from refund counter. We can prove that refund counter will never go below 0.
-        runState.eei.subRefund(new BN(runState._common.param('gasPrices', 'netSstoreClearRefund')))
-      } else if (value.length === 0) {
-        // If new value is 0 (also means that current value is not 0), add 15000 gas to refund counter.
-        runState.eei.refundGas(new BN(runState._common.param('gasPrices', 'netSstoreClearRefund')))
-      }
-    }
-    if (original.equals(value)) {
-      // If original value equals new value (this storage slot is reset)
-      if (original.length === 0) {
-        // If original value is 0, add 19800 gas to refund counter.
-        runState.eei.refundGas(
-          new BN(runState._common.param('gasPrices', 'netSstoreResetClearRefund')),
-        )
-      } else {
-        // Otherwise, add 4800 gas to refund counter.
-        runState.eei.refundGas(new BN(runState._common.param('gasPrices', 'netSstoreResetRefund')))
-      }
-    }
-    return runState.eei.useGas(new BN(runState._common.param('gasPrices', 'netSstoreDirtyGas')))
-  } else if (runState._common.gteHardfork('istanbul')) {
-    // EIP-2200
-    const original = found.original
-    const current = found.current
-    // Fail if not enough gas is left
-    if (
-      runState.eei.getGasLeft().lten(runState._common.param('gasPrices', 'sstoreSentryGasEIP2200'))
-    ) {
-      trap(ERROR.OUT_OF_GAS)
-    }
-
-    // Noop
-    if (current.equals(value)) {
-      return runState.eei.useGas(
-        new BN(runState._common.param('gasPrices', 'sstoreNoopGasEIP2200')),
-      )
-    }
-    if (original.equals(current)) {
-      // Create slot
-      if (original.length === 0) {
-        return runState.eei.useGas(
-          new BN(runState._common.param('gasPrices', 'sstoreInitGasEIP2200')),
-        )
-      }
-      // Delete slot
-      if (value.length === 0) {
-        runState.eei.refundGas(
-          new BN(runState._common.param('gasPrices', 'sstoreClearRefundEIP2200')),
-        )
-      }
-      // Write existing slot
-      return runState.eei.useGas(
-        new BN(runState._common.param('gasPrices', 'sstoreCleanGasEIP2200')),
-      )
-    }
-    if (original.length > 0) {
-      if (current.length === 0) {
-        // Recreate slot
-        runState.eei.subRefund(
-          new BN(runState._common.param('gasPrices', 'sstoreClearRefundEIP2200')),
-        )
-      } else if (value.length === 0) {
-        // Delete slot
-        runState.eei.refundGas(
-          new BN(runState._common.param('gasPrices', 'sstoreClearRefundEIP2200')),
-        )
-      }
-    }
-    if (original.equals(value)) {
-      if (original.length === 0) {
-        // Reset to original non-existent slot
-        runState.eei.refundGas(
-          new BN(runState._common.param('gasPrices', 'sstoreInitRefundEIP2200')),
-        )
-      } else {
-        // Reset to original existing slot
-        runState.eei.refundGas(
-          new BN(runState._common.param('gasPrices', 'sstoreCleanRefundEIP2200')),
-        )
-      }
-    }
-    // Dirty update
-    return runState.eei.useGas(new BN(runState._common.param('gasPrices', 'sstoreDirtyGasEIP2200')))
-  } else {
-    if (value.length === 0 && !found.length) {
-      runState.eei.useGas(new BN(runState._common.param('gasPrices', 'sstoreReset')))
-    } else if (value.length === 0 && found.length) {
-      runState.eei.useGas(new BN(runState._common.param('gasPrices', 'sstoreReset')))
-      runState.eei.refundGas(new BN(runState._common.param('gasPrices', 'sstoreRefund')))
-    } else if (value.length !== 0 && !found.length) {
-      runState.eei.useGas(new BN(runState._common.param('gasPrices', 'sstoreSet')))
-    } else if (value.length !== 0 && found.length) {
-      runState.eei.useGas(new BN(runState._common.param('gasPrices', 'sstoreReset')))
-    }
-  }
-}
-
-/**
- * Wraps error message as VMError
- *
- * @param {string} err
- */
-export function trap(err: string) {
-  // TODO: facilitate extra data along with errors
-  throw new VmError(err as ERROR)
-}
-
-/**
  * Writes data returned by eei.call* methods to memory
  *
  * @param {RunState} runState
@@ -368,5 +238,23 @@ export function writeCallOutput(runState: RunState, outOffset: BN, outLength: BN
     const data = getDataSlice(returnData, new BN(0), new BN(dataLength))
     runState.memory.extend(memOffset, dataLength)
     runState.memory.write(memOffset, dataLength, data)
+  }
+}
+
+/** The first rule set of SSTORE rules, which are the rules pre-Constantinople and in Petersburg
+ * @param {RunState} runState
+ * @param {any}      found
+ * @param {Buffer}   value
+ * @param {Buffer}   keyBuf
+ */
+export function updateSstoreGas(runState: RunState, found: any, value: Buffer, keyBuf: Buffer) {
+  const sstoreResetCost = runState._common.param('gasPrices', 'sstoreReset')
+  if ((value.length === 0 && !found.length) || (value.length !== 0 && found.length)) {
+    runState.eei.useGas(new BN(adjustSstoreGasEIP2929(runState, keyBuf, sstoreResetCost, 'reset')))
+  } else if (value.length === 0 && found.length) {
+    runState.eei.useGas(new BN(adjustSstoreGasEIP2929(runState, keyBuf, sstoreResetCost, 'reset')))
+    runState.eei.refundGas(new BN(runState._common.param('gasPrices', 'sstoreRefund')))
+  } else if (value.length !== 0 && !found.length) {
+    runState.eei.useGas(new BN(runState._common.param('gasPrices', 'sstoreSet')))
   }
 }

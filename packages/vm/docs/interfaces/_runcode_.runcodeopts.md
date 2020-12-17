@@ -33,17 +33,17 @@ Options for the [runCode](../classes/_index_.vm.md#runcode) method.
 
 ### `Optional` address
 
-• **address**? : *Buffer*
+• **address**? : *Address*
 
 *Defined in [runCode.ts:63](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runCode.ts#L63)*
 
-The address of the account that is executing this code. The address should be a `Buffer` of bytes. Defaults to `0`
+The address of the account that is executing this code. Defaults to the zero address.
 
 ___
 
 ### `Optional` block
 
-• **block**? : *any*
+• **block**? : *Block*
 
 *Defined in [runCode.ts:28](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runCode.ts#L28)*
 
@@ -53,11 +53,11 @@ ___
 
 ### `Optional` caller
 
-• **caller**? : *Buffer*
+• **caller**? : *Address*
 
 *Defined in [runCode.ts:40](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runCode.ts#L40)*
 
-The address that ran this code. The address should be a `Buffer` of 20 bits. Defaults to `0`
+The address that ran this code. Defaults to the zero address.
 
 ___
 
@@ -99,7 +99,7 @@ ___
 
 ### `Optional` gasLimit
 
-• **gasLimit**? : *Buffer*
+• **gasLimit**? : *BN*
 
 *Defined in [runCode.ts:52](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runCode.ts#L52)*
 
@@ -109,7 +109,7 @@ ___
 
 ### `Optional` gasPrice
 
-• **gasPrice**? : *Buffer*
+• **gasPrice**? : *BN*
 
 *Defined in [runCode.ts:31](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runCode.ts#L31)*
 
@@ -133,11 +133,11 @@ ___
 
 ### `Optional` origin
 
-• **origin**? : *Buffer*
+• **origin**? : *Address*
 
 *Defined in [runCode.ts:35](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runCode.ts#L35)*
 
-The address where the call originated from. The address should be a `Buffer` of 20 bits. Defaults to `0`
+The address where the call originated from. Defaults to the zero address.
 
 ___
 
@@ -169,7 +169,7 @@ ___
 
 ### `Optional` value
 
-• **value**? : *Buffer*
+• **value**? : *BN*
 
 *Defined in [runCode.ts:56](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/runCode.ts#L56)*
 

@@ -1,23 +1,27 @@
 import * as tape from 'tape'
-import { BN, rlp, keccak256, stripHexPrefix, setLengthLeft, toBuffer } from 'ethereumjs-util'
-import Account from '@ethereumjs/account'
-import { Transaction } from '@ethereumjs/tx'
-import { Block } from '@ethereumjs/block'
+import {
+  Account,
+  BN,
+  rlp,
+  keccak256,
+  stripHexPrefix,
+  setLengthLeft,
+  toBuffer,
+} from 'ethereumjs-util'
+import { Transaction, TxOptions } from '@ethereumjs/tx'
+import { Block, BlockHeader, BlockOptions } from '@ethereumjs/block'
 import Common from '@ethereumjs/common'
 
 export function dumpState(state: any, cb: Function) {
   function readAccounts(state: any) {
-    return new Promise((resolve, reject) => {
-      let accounts: Account[] = []
+    return new Promise((resolve) => {
+      const accounts: Account[] = []
       const rs = state.createReadStream()
       rs.on('data', function (data: any) {
-        let account = new Account(data.value)
-        // Commented out along TypeScript transition:
-        // Account has no property address
-        //account.address = data.key
+        const rlp = data.value
+        const account = Account.fromRlpSerializedAccount(rlp)
         accounts.push(account)
       })
-
       rs.on('end', function () {
         resolve(accounts)
       })
@@ -26,10 +30,10 @@ export function dumpState(state: any, cb: Function) {
 
   function readStorage(state: any, account: Account) {
     return new Promise((resolve) => {
-      let storage: any = {}
-      let storageTrie = state.copy(false)
+      const storage: any = {}
+      const storageTrie = state.copy(false)
       storageTrie.root = account.stateRoot
-      let storageRS = storageTrie.createReadStream()
+      const storageRS = storageTrie.createReadStream()
 
       storageRS.on('data', function (data: any) {
         storage[data.key.toString('hex')] = data.value.toString('hex')
@@ -40,19 +44,19 @@ export function dumpState(state: any, cb: Function) {
       })
     })
   }
-
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   readAccounts(state).then(async function (accounts: any) {
-    let results: any = []
+    const results: any = []
     for (let key = 0; key < accounts.length; key++) {
-      let result = await readStorage(state, accounts[key])
+      const result = await readStorage(state, accounts[key])
       results.push(result)
     }
     for (let i = 0; i < results.length; i++) {
-      console.log("SHA3'd address: " + results[i].address.toString('hex'))
-      console.log('\tstate root: ' + results[i].stateRoot.toString('hex'))
+      console.log("SHA3'd address: " + <string>results[i].address.toString('hex'))
+      console.log('\tstate root: ' + <string>results[i].stateRoot.toString('hex'))
       console.log('\tstorage: ')
-      for (let storageKey in results[i].storage) {
-        console.log('\t\t' + storageKey + ': ' + results[i].storage[storageKey])
+      for (const storageKey in results[i].storage) {
+        console.log('\t\t' + storageKey + ': ' + <string>results[i].storage[storageKey])
       }
       console.log('\tnonce: ' + new BN(results[i].nonce).toString())
       console.log('\tbalance: ' + new BN(results[i].balance).toString())
@@ -64,7 +68,7 @@ export function dumpState(state: any, cb: Function) {
 const format = (exports.format = function (
   a: any,
   toZero: boolean = false,
-  isHex: boolean = false,
+  isHex: boolean = false
 ) {
   if (a === '') {
     return Buffer.alloc(0)
@@ -72,12 +76,12 @@ const format = (exports.format = function (
 
   if (a.slice && a.slice(0, 2) === '0x') {
     a = a.slice(2)
-    if (a.length % 2) a = '0' + a
+    if (a.length % 2) a = '0' + <string>a
     a = Buffer.from(a, 'hex')
   } else if (!isHex) {
     a = Buffer.from(new BN(a).toArray())
   } else {
-    if (a.length % 2) a = '0' + a
+    if (a.length % 2) a = '0' + <string>a
     a = Buffer.from(a, 'hex')
   }
 
@@ -91,11 +95,11 @@ const format = (exports.format = function (
 /**
  * Make a tx using JSON from tests repo
  * @param {Object} txData The tx object from tests repo
- * @param {Common} common An @ethereumjs/common object
+ * @param {TxOptions} opts Tx opts that can include an @ethereumjs/common object
  * @returns {Transaction} Transaction to be passed to VM.runTx function
  */
-export function makeTx(txData: any, common: Common) {
-  const tx = Transaction.fromTxData(txData, { common })
+export function makeTx(txData: any, opts?: TxOptions) {
+  const tx = Transaction.fromTxData(txData, opts)
 
   if (txData.secretKey) {
     const privKey = toBuffer(txData.secretKey)
@@ -121,7 +125,8 @@ export async function verifyPostConditions(state: any, testData: any, t: tape.Te
     const stream = state.createReadStream()
 
     stream.on('data', function (data: any) {
-      const account = new Account(rlp.decode(data.value))
+      const rlp = data.value
+      const account = Account.fromRlpSerializedAccount(rlp)
       const key = data.key.toString('hex')
       const testData = hashedAccounts[key]
       const address = keyMap[key]
@@ -131,7 +136,7 @@ export async function verifyPostConditions(state: any, testData: any, t: tape.Te
         const promise = exports.verifyAccountPostConditions(state, address, account, testData, t)
         queue.push(promise)
       } else {
-        t.fail('invalid account in the trie: ' + key)
+        t.fail('invalid account in the trie: ' + <string>key)
       }
     })
 
@@ -139,7 +144,7 @@ export async function verifyPostConditions(state: any, testData: any, t: tape.Te
       await Promise.all(queue)
 
       for (const hash of keyMap) {
-        t.fail('Missing account!: ' + keyMap[hash])
+        t.fail('Missing account!: ' + <string>keyMap[hash])
       }
 
       resolve()
@@ -159,7 +164,7 @@ export function verifyAccountPostConditions(
   address: string,
   account: Account,
   acctData: any,
-  t: tape.Test,
+  t: tape.Test
 ) {
   return new Promise((resolve) => {
     t.comment('Account: ' + address)
@@ -226,10 +231,10 @@ export function verifyGas(results: any, testData: any, t: tape.Test) {
   }
 
   const postBal = new BN(testData.post[coinbaseAddr].balance)
-  const balance = postBal.sub(preBal).toString()
-  if (balance !== '0') {
+  const balance = postBal.sub(preBal)
+  if (!balance.isZero()) {
     const amountSpent = results.gasUsed.mul(testData.transaction.gasPrice)
-    t.equal(amountSpent.toString(), balance, 'correct gas')
+    t.ok(amountSpent.eq(balance), 'correct gas')
   } else {
     t.equal(results, undefined)
   }
@@ -245,7 +250,7 @@ export function verifyLogs(logs: any, testData: any, t: tape.Test) {
     testData.logs.forEach(function (log: any, i: number) {
       const rlog = logs[i]
       t.equal(rlog[0].toString('hex'), log.address, 'log: valid address')
-      t.equal('0x' + rlog[2].toString('hex'), log.data, 'log: valid data')
+      t.equal('0x' + <string>rlog[2].toString('hex'), log.data, 'log: valid data')
       log.topics.forEach(function (topic: string, i: number) {
         t.equal(rlog[1][i].toString('hex'), topic, 'log: invalid topic')
       })
@@ -253,31 +258,36 @@ export function verifyLogs(logs: any, testData: any, t: tape.Test) {
   }
 }
 
-export function makeBlockHeader(data: any) {
-  const header: any = {}
-  header.timestamp = format(data.currentTimestamp)
-  header.gasLimit = format(data.currentGasLimit)
-  if (data.previousHash) {
-    header.parentHash = format(data.previousHash, false, true)
+export function makeBlockHeader(data: any, opts?: BlockOptions) {
+  const {
+    currentTimestamp,
+    currentGasLimit,
+    previousHash,
+    currentCoinbase,
+    currentDifficulty,
+    currentNumber,
+  } = data
+  const headerData = {
+    number: currentNumber,
+    coinbase: currentCoinbase,
+    parentHash: previousHash,
+    difficulty: currentDifficulty,
+    gasLimit: currentGasLimit,
+    timestamp: currentTimestamp,
   }
-  header.coinbase = setLengthLeft(format(data.currentCoinbase, false, true), 20)
-  header.difficulty = format(data.currentDifficulty)
-  header.number = format(data.currentNumber)
-  return header
+  return BlockHeader.fromHeaderData(headerData, opts)
 }
 
 /**
  * makeBlockFromEnv - helper to create a block from the env object in tests repo
  * @param env object from tests repo
- * @param transactions transactions for the block
+ * @param transactions transactions for the block (optional)
+ * @param uncleHeaders uncle headers for the block (optional)
  * @returns the block
  */
-export function makeBlockFromEnv(env: any, transactions: Transaction[] = []): Block {
-  return new Block({
-    header: exports.makeBlockHeader(env),
-    transactions: transactions,
-    uncleHeaders: [],
-  })
+export function makeBlockFromEnv(env: any, opts?: BlockOptions): Block {
+  const header = makeBlockHeader(env, opts)
+  return new Block(header)
 }
 
 /**
@@ -315,8 +325,11 @@ export async function setupPreConditions(state: any, testData: any) {
       testData.root = storageTrie.root
     }
 
-    const account = new Account({ nonce, balance, codeHash, stateRoot })
+    // Put contract code
     await state._mainDB.put(codeHash, codeBuf)
+
+    // Put account data
+    const account = Account.fromAccountData({ nonce, balance, codeHash, stateRoot })
     await state.put(addressBuf, account.serialize())
   }
   await state.commit()
@@ -344,6 +357,7 @@ export function getRequiredForkConfigAlias(forkConfig: string): string {
  * @returns {bool} is running in karma
  */
 export function isRunningInKarma() {
+  // eslint-disable-next-line no-undef
   return typeof (<any>globalThis).window !== 'undefined' && (<any>globalThis).window.__karma__
 }
 
@@ -354,10 +368,10 @@ export function getDAOCommon(activationBlock: number) {
   // here: get the default fork list of mainnet and only edit the DAO fork block (thus copy the rest of the "default" hardfork settings)
   const defaultDAOCommon = new Common({ chain: 'mainnet', hardfork: 'dao' })
   // retrieve the hard forks list from defaultCommon...
-  let forks = defaultDAOCommon.hardforks()
-  let editedForks = []
+  const forks = defaultDAOCommon.hardforks()
+  const editedForks = []
   // explicitly edit the "dao" block number:
-  for (let fork of forks) {
+  for (const fork of forks) {
     if (fork.name == 'dao') {
       editedForks.push({
         name: 'dao',
@@ -373,7 +387,7 @@ export function getDAOCommon(activationBlock: number) {
     {
       hardforks: editedForks,
     },
-    'dao',
+    'dao'
   )
   return DAOCommon
 }

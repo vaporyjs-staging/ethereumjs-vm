@@ -17,9 +17,9 @@
 
 ###  address
 
-• **address**: *Buffer*
+• **address**: *Address*
 
-*Defined in [evm/evm.ts:74](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/evm/evm.ts#L74)*
+*Defined in [evm/evm.ts:73](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/evm/evm.ts#L73)*
 
 ___
 
@@ -27,4 +27,4 @@ ___
 
 • **code**: *Buffer*
 
-*Defined in [evm/evm.ts:76](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/evm/evm.ts#L76)*
+*Defined in [evm/evm.ts:75](https://github.com/ethereumjs/ethereumjs-vm/blob/master/packages/vm/lib/evm/evm.ts#L75)*
