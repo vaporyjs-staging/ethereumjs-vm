@@ -4,7 +4,11 @@
   "networkId": 5,
   "consensus": {
     "type": "poa",
-    "algorithm": "clique"
+    "algorithm": "clique",
+    "clique": {
+      "period": 15,
+      "epoch": 30000
+    }
   },
   "comment": "Cross-client PoA test network",
   "url": "https://github.com/goerli/testnet",

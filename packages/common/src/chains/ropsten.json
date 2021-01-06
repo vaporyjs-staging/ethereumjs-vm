@@ -4,7 +4,8 @@
   "networkId": 3,
   "consensus": {
     "type": "pow",
-    "algorithm": "ethash"
+    "algorithm": "ethash",
+    "ethash": {}
   },
   "comment": "PoW test network",
   "url": "https://github.com/ethereum/ropsten",
