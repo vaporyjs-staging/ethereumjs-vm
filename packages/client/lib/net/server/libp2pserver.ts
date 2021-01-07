@@ -61,7 +61,7 @@ export class Libp2pServer extends Server {
       })
       this.protocols.forEach(async (p) => {
         const protocol = `/${p.name}/${p.versions[0]}`
-        this.node!.handle(protocol, async ({ connection }) => {
+        this.node!.handle(protocol, async ({ connection }: { connection: Connection }) => {
           try {
             const peerId = await this.getPeerId(connection)
             const peer = this.peers.get(peerId.toB58String())
@@ -98,7 +98,7 @@ export class Libp2pServer extends Server {
       }
     })
     await this.node.start()
-    this.node.addressManager.getListenAddrs().map((ma) => {
+    this.node.addressManager.getListenAddrs().map((ma: multiaddr) => {
       this.emit('listening', {
         transport: this.name,
         url: ma.toString(),

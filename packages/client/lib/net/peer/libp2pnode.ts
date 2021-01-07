@@ -2,12 +2,13 @@
  * Libp2p Bundle
  * @memberof module:net/peer
  */
-import LibP2p from 'libp2p'
+
 import multiaddr from 'multiaddr'
 import PeerId from 'peer-id'
 import { Bootnode } from '../../types'
-// types currently unavailable for below libp2p deps, tracking issue:
-// https://github.com/libp2p/js-libp2p/issues/659
+// types currently unavailable or conflicting for below libp2p deps,
+// tracking issue: https://github.com/libp2p/js-libp2p/issues/659
+const LibP2p = require('libp2p')
 const LibP2pTcp = require('libp2p-tcp')
 const LibP2pWebsockets = require('libp2p-websockets')
 const LibP2pBootstrap = require('libp2p-bootstrap')
@@ -42,13 +43,13 @@ export class Libp2pNode extends LibP2p {
         transport: [LibP2pTcp, LibP2pWebsockets],
         streamMuxer: [mplex],
         connEncryption: [secio],
-        [<any>'peerDiscovery']: [LibP2pBootstrap],
-        [<any>'dht']: LibP2pKadDht,
+        peerDiscovery: [LibP2pBootstrap],
+        dht: LibP2pKadDht,
       },
       config: {
         peerDiscovery: {
           autoDial: true,
-          [(<any>LibP2pBootstrap).tag]: {
+          [LibP2pBootstrap.tag]: {
             interval: 2000,
             enabled: options.bootnodes && options.bootnodes.length > 0,
             list: options.bootnodes ?? [],
