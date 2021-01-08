@@ -100,10 +100,11 @@ export class Libp2pServer extends Server {
       }
     })
     await this.node.start()
-    this.node.multiaddrs.map((ma: multiaddr) => {
+    this.node.multiaddrs.map(async (ma: multiaddr) => {
+      const peerId = (await this.createPeerId()).toB58String()
       this.emit('listening', {
         transport: this.name,
-        url: ma.toString(),
+        url: `${ma.toString()}/ipfs/${peerId}`,
       })
     })
     this.started = true
