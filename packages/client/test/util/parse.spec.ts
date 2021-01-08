@@ -5,6 +5,8 @@ tape('[Util/Parse]', (t) => {
   t.test('should parse bootnodes', (t) => {
     t.deepEquals(parseBootnodes(''), [], 'handle empty')
     t.deepEquals(parseBootnodes('10.0.0.1:1234'), [{ ip: '10.0.0.1', port: 1234 }], 'parse ip:port')
+    // t.deepEquals(parseBootnodes('/ip4/1.1.1.1/tcp/50507/ws'), [{ ip: '1.1.1.1', port: 50507 }], 'parse multiaddrs format')
+    // t.deepEquals(parseBootnodes('/ip4/1.1.1.2/tcp/50508/ws/ipfs/QmYAuYxw6QX1x5aafs6g3bUrPbMDifP5pDun3N9zbVLpEa'), [{ ip: '1.1.1.2', port: 50508 }], 'parse multiaddrs format with peer id')
     t.deepEquals(
       parseBootnodes('enode://abc@10.0.0.1:1234'),
       [{ id: 'abc', ip: '10.0.0.1', port: 1234 }],

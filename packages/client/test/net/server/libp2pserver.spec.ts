@@ -11,14 +11,10 @@ tape('[Libp2pServer]', async (t) => {
   Libp2pPeer.id = 'id0'
 
   class Libp2pNode extends EventEmitter {
-    handle(_: any, _2: Function) {}
-    start() {}
-    stop() {}
-    addressManager = {
-      getListenAddrs() {
-        return ['ma0']
-      },
-    }
+    handle(_: any, _2: Function) { }
+    start() { }
+    stop() { }
+    multiaddrs = ['ma0']
   }
   Libp2pNode.prototype.handle = td.func<any>()
   Libp2pNode.prototype.start = td.func<any>()
@@ -42,6 +38,7 @@ tape('[Libp2pServer]', async (t) => {
   td.when(PeerId.createFromPrivKey(Buffer.from('1'))).thenResolve('id1')
   td.when(PeerId.createFromPrivKey(Buffer.from('2'))).thenResolve('id2')
   td.when(PeerId.createFromPrivKey(Buffer.from('3'))).thenReject(new Error('err0'))
+  td.when(PeerId.createFromPrivKey(Buffer.from('4'))).thenResolve({ toB58String: () => { return 'id4' } })
 
   const { Libp2pServer } = await import('../../../lib/net/server/libp2pserver')
 
@@ -123,7 +120,7 @@ tape('[Libp2pServer]', async (t) => {
     t.plan(11)
     const config = new Config({ transports: [], loglevel: 'off' })
     const multiaddrs = [multiaddr('/ip4/6.6.6.6')]
-    const server = new Libp2pServer({ config, multiaddrs })
+    const server = new Libp2pServer({ config, multiaddrs, key: Buffer.from('4') })
     const protos: any = [
       { name: 'proto', versions: [1] },
       { name: 'proto', versions: [2] },
@@ -155,10 +152,10 @@ tape('[Libp2pServer]', async (t) => {
     td.when(server.getPeerId(conn1)).thenReject(new Error('err0'))
     td.when(server.createPeer(peerId2)).thenReturn(peer2)
     td.when(peer.accept(protos[0], 'conn0', server)).thenResolve(null)
-    ;(server as any).peers.set('id', peer)
+      ; (server as any).peers.set('id', peer)
     server.addProtocols(protos)
     server.on('listening', (info: any) =>
-      t.deepEquals(info, { transport: 'libp2p', url: 'ma0' }, 'listening')
+      t.deepEquals(info, { transport: 'libp2p', url: 'ma0/ipfs/id4' }, 'listening')
     )
     server.once('connected', (p: any) => t.equals(p, peer, 'peer connected'))
     server.on('error', (err: Error) => t.equals(err.message, 'err0', 'got err0'))
