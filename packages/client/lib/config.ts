@@ -1,3 +1,4 @@
+import multiaddr from 'multiaddr'
 import Common from '@ethereumjs/common'
 import VM from '@ethereumjs/vm'
 import { getLogger, Logger } from './logging'
@@ -174,8 +175,12 @@ export class Config {
     } else {
       // Otherwise parse transports from transports option
       this.servers = parseTransports(this.transports).map((t) => {
+        // format multiaddrs as multiaddr[]
+        if (t.options.multiaddrs) {
+          t.options.multiaddrs = [multiaddr(t.options.multiaddrs)] as any
+        }
         if (t.name === 'rlpx') {
-          t.options.bootnodes = t.options.bootnodes || this.common.bootstrapNodes()
+          t.options.bootnodes = t.options.bootnodes ?? this.common.bootstrapNodes()
           return new RlpxServer({ config: this, ...t.options })
         } else {
           return new Libp2pServer({ config: this, ...t.options })
