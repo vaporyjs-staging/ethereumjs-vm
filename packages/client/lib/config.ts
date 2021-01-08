@@ -180,7 +180,9 @@ export class Config {
           t.options.multiaddrs = [multiaddr(t.options.multiaddrs)] as any
         }
         if (t.name === 'rlpx') {
-          t.options.bootnodes = t.options.bootnodes ?? this.common.bootstrapNodes()
+          if (!t.options.bootnodes) {
+            t.options.bootnodes = this.common.bootstrapNodes()
+          }
           return new RlpxServer({ config: this, ...t.options })
         } else {
           return new Libp2pServer({ config: this, ...t.options })

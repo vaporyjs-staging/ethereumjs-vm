@@ -17,13 +17,19 @@ tape('[Config]', (t) => {
 
   t.test('getChainDataDirectory() default directory', (t) => {
     const config = new Config()
-    t.equal(config.getChainDataDirectory(), `${os.homedir()}/Library/Ethereum/ethereumjs/mainnet/chain`)
+    t.equal(
+      config.getChainDataDirectory(),
+      `${os.homedir()}/Library/Ethereum/ethereumjs/mainnet/chain`
+    )
     t.end()
   })
 
   t.test('getStateDataDirectory() default directory', (t) => {
     const config = new Config()
-    t.equal(config.getStateDataDirectory(), `${os.homedir()}/Library/Ethereum/ethereumjs/mainnet/state`)
+    t.equal(
+      config.getStateDataDirectory(),
+      `${os.homedir()}/Library/Ethereum/ethereumjs/mainnet/state`
+    )
     t.end()
   })
 })

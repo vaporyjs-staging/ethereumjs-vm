@@ -55,7 +55,7 @@ export class Libp2pServer extends Server {
     await super.start()
     if (!this.node) {
       const peerId = await this.createPeerId()
-      const addresses = { listen: this.multiaddrs.map(ma => ma.toString()) }
+      const addresses = { listen: this.multiaddrs.map((ma) => ma.toString()) }
       this.node = new Libp2pNode({
         peerId,
         addresses,
