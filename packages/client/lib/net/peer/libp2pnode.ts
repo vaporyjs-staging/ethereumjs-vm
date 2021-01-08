@@ -29,9 +29,6 @@ export interface Libp2pNodeOptions {
 
   /* Bootnodes */
   bootnodes?: Bootnode[]
-
-  /* Multiaddrs */
-  multiaddrs?: multiaddr[]
 }
 
 export class Libp2pNode extends LibP2p {
@@ -52,7 +49,7 @@ export class Libp2pNode extends LibP2p {
           [LibP2pBootstrap.tag]: {
             interval: 2000,
             enabled: options.bootnodes && options.bootnodes.length > 0,
-            list: options.bootnodes ?? [],
+            list: options.bootnodes?.map(b => multiaddr(`/ip4/${b.ip}/tcp/${b.port}`)) ?? [],
           },
         },
         dht: {

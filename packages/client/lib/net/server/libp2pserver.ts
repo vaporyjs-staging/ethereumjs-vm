@@ -55,8 +55,10 @@ export class Libp2pServer extends Server {
     await super.start()
     if (!this.node) {
       const peerId = await this.createPeerId()
+      const addresses = { listen: this.multiaddrs.map(ma => ma.toString()) }
       this.node = new Libp2pNode({
         peerId,
+        addresses,
         bootnodes: this.bootnodes,
       })
       this.protocols.forEach(async (p) => {
@@ -98,7 +100,7 @@ export class Libp2pServer extends Server {
       }
     })
     await this.node.start()
-    this.node.addressManager.getListenAddrs().map((ma: multiaddr) => {
+    this.node.multiaddrs.map((ma: multiaddr) => {
       this.emit('listening', {
         transport: this.name,
         url: ma.toString(),
