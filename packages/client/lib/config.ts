@@ -3,6 +3,7 @@ import VM from '@ethereumjs/vm'
 import { getLogger, Logger } from './logging'
 import { Libp2pServer, RlpxServer } from './net/server'
 import { parseTransports } from './util'
+const os = require('os')
 
 export interface ConfigOptions {
   /**
@@ -110,7 +111,7 @@ export class Config {
   public static readonly COMMON_DEFAULT = new Common({ chain: 'mainnet', hardfork: 'chainstart' })
   public static readonly SYNCMODE_DEFAULT = 'full'
   public static readonly LIGHTSERV_DEFAULT = false
-  public static readonly DATADIR_DEFAULT = `./datadir`
+  public static readonly DATADIR_DEFAULT = `${os.homedir()}/Library/Ethereum/ethereumjs`
   public static readonly TRANSPORTS_DEFAULT = ['rlpx:port=30303', 'libp2p']
   public static readonly RPC_DEFAULT = false
   public static readonly RPCPORT_DEFAULT = 8545
